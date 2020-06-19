@@ -111,7 +111,7 @@ class Chart(object):
         save_texts(self.text_boxes, self.text_boxes_filename)
 
 
-def create_mask((h, w), texts):
+def create_mask(h, w, texts):
     mask = np.zeros((h, w), np.uint8)
     for t in texts:
         cv2.rectangle(mask, u.ttoi(t.p1), u.ttoi(t.p2), 255, thickness=-1)

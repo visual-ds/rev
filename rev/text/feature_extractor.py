@@ -43,12 +43,12 @@ def from_chart(chart):
     """
     text_boxes = chart.text_boxes
     fh, fw, _ = chart.image.shape
-    features = from_text_boxes(text_boxes, (fh, fw), chart.id, chart.filename)
+    features = from_text_boxes(text_boxes, fh, fw, chart.id, chart.filename)
 
     return features
 
 
-def from_text_boxes(boxes, (fh, fw), chart_id, chart_fn=''):
+def from_text_boxes(boxes, fh, fw, chart_id, chart_fn=''):
     """
     Extract geometric features from bounding boxes.
     Assuming all the boxes belong to a figure.
@@ -61,7 +61,7 @@ def from_text_boxes(boxes, (fh, fw), chart_id, chart_fn=''):
     """
     rows = []
     for box in boxes:
-        vscore, hscore, vrange, hrange, vfreq, hfreq = alignment_scores(box, boxes, (fh, fw))
+        vscore, hscore, vrange, hrange, vfreq, hfreq = alignment_scores(box, boxes, fh, fw)
 
         row = box.to_dict()
         row['vscore'] = vscore
@@ -155,7 +155,7 @@ def from_text_boxes(boxes, (fh, fw), chart_id, chart_fn=''):
     return df[filtered_columns]
 
 
-def alignment_scores(ref_box, boxes, (fh, fw)):
+def alignment_scores(ref_box, boxes, fh, fw):
     """
     Return the number of boxes which intersect vertically and horizontally the
     'ref_box'. These values are normalized by the total number of boxes.

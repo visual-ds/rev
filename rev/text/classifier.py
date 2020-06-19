@@ -3,7 +3,10 @@ import pandas as pd
 import sys
 import os
 
-from sklearn.externals import joblib
+#from sklearn.externals import joblib as jls
+
+import joblib
+import pickle
 from sklearn.model_selection import cross_val_predict
 from sklearn import svm
 import sklearn.metrics as metrics
@@ -56,11 +59,15 @@ class TextClassifier:
     def __init__(self, model_name=None):
         if model_name is None:
             # Pipeline: standardization -> svm
-            my_svm = svm.SVC(C=100, gamma=0.1, class_weight='balanced', kernel='rbf')
+            my_svm = svm.SVC(C=100, gamma=0.1, class_weight='balanced', kernel='rbf', probability=True)
             self._clf = make_pipeline(StandardScaler(), my_svm)
         else:
             model_file = model_files[model_name]
-            self._clf = joblib.load(model_file)
+            
+            #self._clf = pickle.load(model_file)
+            with open(model_file, 'rb') as pickle_file:
+                self._clf = pickle.load(pickle_file)
+            #self._clf = content
 
     def train(self, features, types):
         """
@@ -70,28 +77,30 @@ class TextClassifier:
         :param types:
         :return:
         """
-        print >> sys.stderr, 'fitting...',
+       # print >> sys.stderr, 'fitting...',
+        sys.stderr.write('fitting...')
         self._clf.fit(features, types)
-        print 'DONE'
+        print ('DONE')
 
-        print >> sys.stderr, 'evaluating...',
+       # print >> sys.stderr, 'evaluating...',
+        sys.stderr.write('evaluating...')
         pred_types = self._clf.predict(features)
-        print 'DONE'
+        print ('DONE')
 
         cm = metrics.confusion_matrix(types, pred_types, labels=self._clf.classes_)
         u.print_cm(cm, labels=self._clf.classes_)
-        print 'accuracy: ', metrics.accuracy_score(types, pred_types)
-        print 'wrong boxes: ', sum(types != pred_types)
+        print ('accuracy: ', metrics.accuracy_score(types, pred_types))
+        print ('wrong boxes: ', sum(types != pred_types))
 
     def cross_validation(self, features, true_types, cv):
         labels = unique_labels(true_types)
-        print 'total after sampling:', len(true_types)
-        print pd.value_counts(true_types)[labels]
+        print ('total after sampling:', len(true_types))
+        print (pd.value_counts(true_types)[labels])
 
         # cross-validation
         pred_type = cross_val_predict(self._clf, features, true_types, cv=cv, n_jobs=-1)
-        print metrics.classification_report(true_types, pred_type, target_names=labels)
-        print 'Accuracy: ', metrics.accuracy_score(true_types, pred_type)
+        print (metrics.classification_report(true_types, pred_type, target_names=labels))
+        print ('Accuracy: ', metrics.accuracy_score(true_types, pred_type))
 
         cm = metrics.confusion_matrix(true_types, pred_type, labels=labels)
         u.print_cm(cm, labels=labels)
@@ -112,9 +121,9 @@ class TextClassifier:
         fh, fw, _ = chart.image.shape
         text_boxes = copy.deepcopy(chart.text_boxes)
         for b in text_boxes:
-            b.wrap_rect((fh, fw), padx=pad, pady=pad)
+            b.wrap_rect(fh, fw, padx=pad, pady=pad)
 
-        pred_types = self.classify_from_boxes(text_boxes, (fh, fw), with_post)
+        pred_types = self.classify_from_boxes(text_boxes, fh, fw, with_post)
 
         if save:
             for text_box, pred_type in zip(chart.text_boxes, pred_types):
@@ -123,14 +132,14 @@ class TextClassifier:
 
         return pred_types
 
-    def classify_from_boxes(self, text_boxes, shape, with_post=False):
+    def classify_from_boxes(self, text_boxes, fh, fw, with_post=False):
         """
         Classify text boxes
         :param text_boxes: bounding boxes
         :param shape: (fh, fw) figure height and width.
         :return:
         """
-        data = feature_extractor.from_text_boxes(text_boxes, shape, 0, '')
+        data = feature_extractor.from_text_boxes(text_boxes, fh, fw, 0, '')
         features = data[VALID_COLUMNS]
 
         # predict class
@@ -142,7 +151,9 @@ class TextClassifier:
         return pred_types
 
     def save_model(self, filename):
-        joblib.dump(self._clf, filename)
+        with open(filename, 'wb') as pickle_file:
+            pickle.dump(self._clf, pickle_file)
+        #pickle.dump(self._clf, filename, 'wb')
 
 
 

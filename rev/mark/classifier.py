@@ -22,9 +22,9 @@ models = {
 class MarkClassifier:
     def __init__(self, model_name=None):
         model = models[model_name if model_name is not None else 'charts5cats']
-        print model['path']+model['model_file']
-        print model['path']+'snapshots/'+model['weights_file']
-        print model['path']+model['mean_file']
+        print (model['path']+model['model_file'])
+        print (model['path']+'snapshots/'+model['weights_file'])
+        print (model['path']+model['mean_file'])
         self._net = caffe.Classifier(
             model_file=model['path']+model['model_file'],
             pretrained_file=model['path']+'snapshots/'+model['weights_file'],
@@ -44,7 +44,7 @@ class MarkClassifier:
     def classify(self, charts):
         def chunks(l, n):
             # Yield successive n-sized chunks from l.
-            for i in xrange(0, len(l), n):
+            for i in range(0, len(l), n):
                 yield l[i:i + n]
 
         all_predictions = []
@@ -54,6 +54,7 @@ class MarkClassifier:
             predictions = self._net.predict(inputs, True)
             predictions = predictions.argmax(1)
             all_predictions.append(predictions)
+
 
         predictions = np.hstack(all_predictions)
 

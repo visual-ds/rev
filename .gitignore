@@ -14,3 +14,8 @@ data
 models
 
 out.*
+
+#test
+.ipynb_checkpoints/
+.vscode/
+sandbox.ipynb

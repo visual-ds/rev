@@ -30,7 +30,7 @@ class TextBox(object):
     #     _y = self.y - (_h - self.h) / 2.0
     #     return TextBox(self._id, self._type, _x, _y, _w, _h)
 
-    def wrap_rect(self, (fh, fw), padx=2, pady=None):
+    def wrap_rect(self, fh, fw, padx=2, pady=None):
         pady = padx if pady is None else pady
         nx, ny = max(self.x - padx, 0), max(self.y - pady, 0)
         nw = min(self.x + self.w + padx, fw) - nx
