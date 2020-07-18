@@ -81,6 +81,14 @@ class Chart(object):
 
         return self._texts
 
+    # setting the textboxes values     
+    def set_text_boxes(self, texts):
+        self._texts = texts 
+
+    # setting the textboxes values     
+    def update_prefix(self, text_from):
+        self._prefix = prefixes[text_from] 
+
     @property
     def mask(self, force_to_create=False):
         fn = self._fn.replace('.png', self._prefix + '-mask.png')
@@ -137,6 +145,7 @@ def load_texts(fn):
 def save_texts(text_boxes, fn):
     rows = []
     for t in text_boxes:
+    #print(text_boxes)
         rows.append(t.to_dict())
     df = pd.DataFrame(rows)
     df = df[rows[0].keys()]
