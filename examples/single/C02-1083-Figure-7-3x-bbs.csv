@@ -1,0 +1,10 @@
+id,x,y,width,height,text,type
+0,103.5,85.5,38.5,32.5,95,y-axis-label
+1,103.5,162.0,38.5,34.0,90,y-axis-label
+2,103.5,237.0,38.5,34.0,85,y-axis-label
+3,193.5,288.0,143.5,32.5,2.65-3.99,x-axis-label
+4,399.0,288.0,142.0,32.5,4.00-5.99,x-axis-label
+5,601.5,288.0,140.5,32.5,6.00-Top,x-axis-label
+6,406.5,352.5,124.0,34.0,C-value,x-axis-title
+7,7.5,63.0,32.5,148.0,precision,y-axis-title
+8,87.0,10.5,55.0,32.5,100,y-axis-label

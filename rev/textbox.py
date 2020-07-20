@@ -1,14 +1,19 @@
 import numpy as np
 from collections import OrderedDict
 import cv2
+from .text import rectutils as ru
 
 
 class TextBox(object):
-    def __init__(self, id, x, y, w, h, type='', text=''):
+    def __init__(self, id, x, y, w, h, type='', text='', text_conf = '', text_dist = '', text_angle = ''):
         self._id = id
         self._rect = (float(x), float(y), float(w), float(h))
         self._type = type
         self._text = text
+
+        self._text_conf = text_conf
+        self._text_dist = text_dist
+        self._text_angle = text_angle
 
         self._regions = []  # the connected components
 
@@ -174,8 +179,8 @@ class TextBox(object):
         points = []
         new_tbox = TextBox(id, 0, 0, 0, 0)
         for tbox in texts:
-            points.append(ru.points(tbox.rect))
-            new_tbox._regions.extend(tbox.regions)
+            points.append( ru.points(tbox._rect))
+            new_tbox._regions.extend(tbox._regions)
 
         new_tbox._rect = cv2.boundingRect(np.concatenate(points).astype('float32'))
 

@@ -15,7 +15,7 @@ def on_same_line(r1, r2, horiz=True):
     x1, y1, w1, h1 = r1 if horiz else (r1[1], r1[0], r1[3], r1[2])
     x2, y2, w2, h2 = r2 if horiz else (r2[1], r2[0], r2[3], r2[2])
 
-    over, d = range_overlap((y1, y1+h1), (y2, y2+h2))
+    over, d = range_overlap(y1, y1+h1, y2, y2+h2)
     if over and d > min(h1, h2) / 2.0:
         return True
     return False
@@ -56,12 +56,12 @@ def overlap(r1, r2):
     """
     x1, y1, w1, h1 = r1
     x2, y2, w2, h2 = r2
-    over1, _ = range_overlap((x1, x1 + w1), (x2, x2 + w2))
-    over2, _ = range_overlap((y1, y1 + h1), (y2, y2 + h2))
+    over1, _ = range_overlap(x1, x1 + w1, x2, x2 + w2)
+    over2, _ = range_overlap(y1, y1 + h1, y2, y2 + h2)
     return over1 and over2
 
 
-def range_overlap((a_min, a_max), (b_min, b_max)):
+def range_overlap(a_min, a_max, b_min, b_max):
     """
     Based on http://codereview.stackexchange.com/questions/31352/overlapping-rectangles
     Neither range is completely greater than the other
@@ -107,7 +107,7 @@ def center(r):
     return x + w / 2.0, y + h / 2.0
 
 def filter_duplicates(rects):
-    print "Filtering %d regions..." % (len(rects))
+    print("Filtering %d regions..." % (len(rects)))
 
     th = 10
     C = np.zeros((len(rects), len(rects)), dtype=bool)
@@ -123,12 +123,18 @@ def filter_duplicates(rects):
 
     rects, group_indices = __bfs_bbx(rects, C)
 
-    print "\tto %d regions" % (len(rects))
+    print("\tto %d regions" % (len(rects)))
     return rects, group_indices
 
 
 def mean_color(img, bw, rect):
-    x, y, w, h = wrap_rect(rect, bw.shape, padx=1)
+    x, y, w, h = wrap_rect(rect, bw.shape[0], bw.shape[1], padx=1)
+
+    x = int(x)
+    y = int(y)
+    w = int(w)
+    h = int(w)
+
     roi = img[y:y + h, x:x + w, :]
     roi_bw = bw[y:y + h, x:x + w]
 
@@ -156,40 +162,41 @@ def color_dist(img, bw, r1, r2):
     return delta_e
 
 
-def find_words(rects, img):
-    C = np.zeros((len(rects), len(rects)), dtype=bool)
-    for i, r1 in enumerate(rects):
-        x1, y1, w1, h1 = r1
-        for j, r2 in enumerate(rects):
-            x2, y2, w2, h2, = r2
-            if i == j or \
-               (abs(y1 - y2) < min(h1, h2)/float(2) and                 # almost same level
-                abs(h1 - h2) < min(h1, h2)/2. and                          # almost same height
-                # (inside(r1, r2) or inside(r2, r1)) and
-                # (abs(x1 + w1 - x2) < 10 or abs(x2 + w2 - x1) < 10) and  # boxes distance
-                (abs(x1 + w1 - x2) < 10 or abs(x2 + w2 - x1) < 10 or inside(r1, r2) or inside(r2, r1)) and  # boxes distance
-                color_dist(img, r1, r2) < 10):                          # almost same color
-                C[i, j] = True
 
-    rects, group_indices = __bfs_bbx(rects, C)
-    return rects
+# def find_words(rects, img):
+#     C = np.zeros((len(rects), len(rects)), dtype=bool)
+#     for i, r1 in enumerate(rects):
+#         x1, y1, w1, h1 = r1
+#         for j, r2 in enumerate(rects):
+#             x2, y2, w2, h2, = r2
+#             if i == j or \
+#                (abs(y1 - y2) < min(h1, h2)/float(2) and                 # almost same level
+#                 abs(h1 - h2) < min(h1, h2)/2. and                          # almost same height
+#                 # (inside(r1, r2) or inside(r2, r1)) and
+#                 # (abs(x1 + w1 - x2) < 10 or abs(x2 + w2 - x1) < 10) and  # boxes distance
+#                 (abs(x1 + w1 - x2) < 10 or abs(x2 + w2 - x1) < 10 or inside(r1, r2) or inside(r2, r1)) and  # boxes distance
+#                 color_dist(img, r1, r2) < 10):                          # almost same color
+#                 C[i, j] = True
+
+#     rects, group_indices = __bfs_bbx(rects, C)
+#     return rects
 
 
-def find_words2(rects, img):
-    C = np.zeros((len(rects), len(rects)), dtype=bool)
-    for i, r1 in enumerate(rects):
-        y1, x1, h1, w1 = r1
-        for j, r2 in enumerate(rects):
-            y2, x2, h2, w2, = r2
-            if i == j or \
-               (abs(y1 - y2) < min(h1, h2)/float(2) and                 # almost same level
-                abs(h1 - h2) < min(h1, h2)/float(2) and                 # almost same height
-                (abs(x1 + w1 - x2) < 10 or abs(x2 + w2 - x1) < 10) and  # boxes distance
-                color_dist(img, r1, r2) < 10):                          # almost same color
-                C[i, j] = True
+# def find_words2(rects, img):
+#     C = np.zeros((len(rects), len(rects)), dtype=bool)
+#     for i, r1 in enumerate(rects):
+#         y1, x1, h1, w1 = r1
+#         for j, r2 in enumerate(rects):
+#             y2, x2, h2, w2, = r2
+#             if i == j or \
+#                (abs(y1 - y2) < min(h1, h2)/float(2) and                 # almost same level
+#                 abs(h1 - h2) < min(h1, h2)/float(2) and                 # almost same height
+#                 (abs(x1 + w1 - x2) < 10 or abs(x2 + w2 - x1) < 10) and  # boxes distance
+#                 color_dist(img, r1, r2) < 10):                          # almost same color
+#                 C[i, j] = True
 
-    rects, group_indices = __bfs_bbx(rects, C)
-    return rects
+#     rects, group_indices = __bfs_bbx(rects, C)
+#     return rects
 
 
 def __bfs_bbx(rects, C):
@@ -237,3 +244,13 @@ def points(rect):
 #     nw = min(x + w + padx, fw) - nx
 #     nh = min(y + h + pady, fh) - ny
 #     return nx, ny, nw, nh
+
+
+def wrap_rect(rect, fh, fw, padx=2, pady=None):
+    if pady is None:
+        pady = padx
+    x, y, w, h = rect
+    nx, ny = max(x - padx, 0), max(y - pady, 0)
+    nw = min(x + w + padx, fw) - nx
+    nh = min(y + h + pady, fh) - ny
+    return nx, ny, nw, nh

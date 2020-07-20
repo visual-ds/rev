@@ -99,6 +99,17 @@ class Chart(object):
 
         return cv2.imread(fn, cv2.IMREAD_GRAYSCALE)
 
+    @property
+    def pixel_mask(self, force_to_create=False):
+        fn = self._fn.replace('.png', '-mask.png')
+        if not os.path.exists(fn) or force_to_create:
+            #Todo: levantar el model darknet
+            pass
+
+
+        #print(fn)
+        return cv2.imread(fn, cv2.IMREAD_GRAYSCALE)
+
     # @property
     # def pixel_mask(self, force_to_create=False):
     #     fn = self._fn.replace('.png', 'predicted-mask.png')
@@ -117,6 +128,9 @@ class Chart(object):
 
     def save_text_boxes(self):
         save_texts(self.text_boxes, self.text_boxes_filename)
+
+    def predicted_debug_name(self, from_bbs=1):
+        return self._fn.replace('.png', '-pred%d-debug.png' % from_bbs)
 
 
 def create_mask(h, w, texts):
