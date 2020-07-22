@@ -13,9 +13,12 @@ from skimage.segmentation import clear_border
 
 from .. import utils as u
 from . import rectutils as ru
-from chartprocessor.chart import save_bbs
-from chartprocessor.third_party.textconvert import lossy_unicode_to_ascii
-import chartprocessor.utils as u
+
+#from chartprocessor.chart import save_bbs
+#from chartprocessor.third_party.textconvert import lossy_unicode_to_ascii
+#import chartprocessor.utils as u
+
+from ..third_party.textconvert import lossy_unicode_to_ascii
 
 from PIL import Image
 
@@ -110,7 +113,7 @@ def run_ocr_in_boxes(img, boxes, pad=0, psm=PSM.SINGLE_LINE):
             roi_gray2 = clahe.apply(roi_gray)
             _, roi_bw2 = cv2.threshold(roi_gray2, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
             _, num_comp = morphology.label(roi_bw2, return_num=True, background=255)
-            box.regions.extend(range(num_comp))
+            box._regions.extend(range(num_comp))
 
         #pil_img = smp.toimage(roi_bw)
         pil_img = Image.fromarray(roi_bw)
@@ -121,7 +124,7 @@ def run_ocr_in_boxes(img, boxes, pad=0, psm=PSM.SINGLE_LINE):
         min_dist = np.inf
         correct_text = ''
         correct_angle = 0
-        u.log('---------------')
+        #u.log('---------------')
         for angle in [0, -90, 90]:
             rot_img = pil_img.rotate(angle, expand=1)
 
@@ -130,7 +133,7 @@ def run_ocr_in_boxes(img, boxes, pad=0, psm=PSM.SINGLE_LINE):
             text = api.GetUTF8Text().strip()
             dist = abs(len(text.replace(' ', '')) - box.num_comp)
 
-            u.log('text: %s  conf: %f  dist: %d' % (text, conf, dist))
+            #u.log('text: %s  conf: %f  dist: %d' % (text, conf, dist))
             if conf > max_conf and dist <= min_dist:
                 max_conf = conf
                 correct_text = text
@@ -142,28 +145,28 @@ def run_ocr_in_boxes(img, boxes, pad=0, psm=PSM.SINGLE_LINE):
         box._text_dist = min_dist
         box._text_angle = correct_angle
 
-        u.log('num comp %d' % box.num_comp)
-        u.log(u'** text: {} conf: {} angle: {}'.format(correct_text, max_conf, correct_angle))
+        #u.log('num comp %d' % box.num_comp)
+        #u.log(u'** text: {} conf: {} angle: {}'.format(correct_text, max_conf, correct_angle))
 
     api.End()
 
     return boxes
 
 
-def run_ocr_in_chart(chart, from_bbs, pad=0):
-    """
-    Run OCR for all the boxes in a chart and save them in a csv file.
-    :param chart:
-    :param from_bbs: 1: from predicted1-bbs.csv
-                     2: from predicted2-bbs.csv  [default: 1]
-    :return:
-    """
-    assert (from_bbs != 0)
-    if from_bbs == 1 and not os.path.isfile(chart.predicted_bbs_name(1)):
-            u.create_predicted1_bbs(chart)
+# def run_ocr_in_chart(chart, from_bbs, pad=0):
+#     """
+#     Run OCR for all the boxes in a chart and save them in a csv file.
+#     :param chart:
+#     :param from_bbs: 1: from predicted1-bbs.csv
+#                      2: from predicted2-bbs.csv  [default: 1]
+#     :return:
+#     """
+#     assert (from_bbs != 0)
+#     if from_bbs == 1 and not os.path.isfile(chart.predicted_bbs_name(1)):
+#             u.create_predicted1_bbs(chart)
 
-    boxes = chart.predicted_bbs(from_bbs)
-    run_ocr_in_boxes(chart.image(), boxes, pad=pad)
+#     boxes = chart.predicted_bbs(from_bbs)
+#     run_ocr_in_boxes(chart.image(), boxes, pad=pad)
 
-    bb_name = chart.predicted_bbs_name(from_bbs)
-    save_bbs(bb_name, boxes)
+#     bb_name = chart.predicted_bbs_name(from_bbs)
+#     save_bbs(bb_name, boxes)

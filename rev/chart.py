@@ -8,9 +8,6 @@ from . import utils as u
 from .text.mask_predictor import predict_mask
 
 import copy
-
-
-
 '''
     The attribute 'text_from' means:
     0: read ground truth data:
@@ -116,9 +113,9 @@ class Chart(object):
         save_texts(self.text_boxes, self.text_boxes_filename)
 
     def save_debug_image(self):
-        if not os.path.exists(self.predicted_debug_name):
-            debug_image = u.draw_boxes(self.image, self.text_boxes)
-            cv2.imwrite(self.predicted_debug_name, debug_image)
+        #if not os.path.exists(self.predicted_debug_name):
+        debug_image = u.draw_boxes(self.image, self.text_boxes)
+        cv2.imwrite(self.predicted_debug_name, debug_image)
         
     @property
     def predicted_debug_name(self):

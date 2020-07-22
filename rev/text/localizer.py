@@ -9,6 +9,8 @@ from .. import utils as u
 from . import rectutils as ru
 from . import ocr
 
+from . pixel_link_text_detector import text_detect
+
 from scipy.ndimage.morphology import binary_propagation
 from scipy.spatial.distance import pdist, squareform, euclidean
 
@@ -21,12 +23,13 @@ import numpy as np
 
 from numpy import random
 
+
+
 class TextLocalizer:
     def __init__(self):
         pass
 
-    def localize(self, chart, preproc_scale = 1.5, debug=False, method = 'default'):
-
+    def default_localize(self, chart, preproc_scale = 1.5, debug=False):
         img = chart.image
 
         # pre-processing
@@ -86,22 +89,48 @@ class TextLocalizer:
 
         return boxes
 
-        #self._chart.set_text_boxes(boxes)
-        #self._chart.update_prefix(2)
-        #save_texts(boxes, self._chart.text_boxes_filename)
+    def pixel_link_localize(self, chart, debug=False):
+        #apply the pixel_link detector
+        points = text_detect(chart.filename)
+
+        #Convert to bboxes
+        points = [ e.reshape(-1,2) for e in np.array(points)]
+
+        boxes = []
+        for i, point in enumerate(points):
+            xmin = min(point, key = lambda t: t[0])[0]
+            ymin = min(point, key = lambda t: t[1])[1]
+            xmax = max(point, key = lambda t: t[0])[0]
+            ymax = max(point, key = lambda t: t[1])[1]
+            boxes.append(TextBox(i, xmin, ymin, xmax-xmin, ymax-ymin))
 
 
-        # cambiar chart predicted debug
-        #cv2.imwrite(self._chart.predicted_debug_name(from_bbs=2), vis2)
+        # Apply OCR and filter by confidence and filter
+        img = chart.image.copy()
+        boxes = ocr.run_ocr_in_boxes(img, boxes, pad=3, psm=8) #8 for single word
+        min_conf = 25
+        max_dist = 4
+        boxes = [box for box in boxes if box._text_conf > min_conf and box._text_dist < max_dist]
+        min_conf = 40
+        boxes = [box for box in boxes if box._text_conf > min_conf]
 
+        vis = u.draw_boxes(img.copy(), boxes)
 
-        # random test
-        #h, w, _ = self._chart.image.shape
-        #n_boxes = random.randint(1,15)
-        #textboxes = [ randombox(i, w, h) for i in range(n_boxes)]
-        #self._chart.set_text_boxes(textboxes)
-        #self._chart.update_prefix(2)
-        #save_texts(textboxes, self._chart.text_boxes_filename)
+        if debug:
+            cv2.imshow('img', vis)
+            #show_image('text', img, 1200, 600)
+
+        return boxes
+        
+
+    def localize(self, chart, debug=False, method = 'default'):
+        if method == 'default':
+            return self.default_localize(chart, 1.5, debug)
+
+        elif method == 'pixel_link':
+            return self.pixel_link_localize(chart, debug)
+        else:
+            raise Exception('method parameter only supports: "default" or "pixel_link"')
 
 
 def randombox(id, w , h):
