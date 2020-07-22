@@ -50,16 +50,16 @@ import rev.text
 
 # feature extraction (single)
 text_features = rev.text.feature_extractor.from_chart(chart)
-print text_features
+print(text_features)
 
 # feature extraction (corpus)
 text_features = rev.text.feature_extractor.from_chart(chart)
-print text_features
+print(text_features)
 
 # text role classification
 text_clf = rev.text.TextClassifier('default')
 text_type_preds = text_clf.classify(chart)
-print text_type_preds
+print(text_type_preds)
 
 # training text role classifier
 import pandas as pd

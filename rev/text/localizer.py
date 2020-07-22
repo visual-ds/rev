@@ -3,7 +3,7 @@ import os
 import math
 import itertools
 
-from .. chart import Chart, save_texts
+from .. chart import Chart
 from .. textbox import TextBox
 from .. import utils as u
 from . import rectutils as ru
@@ -22,52 +22,33 @@ import numpy as np
 from numpy import random
 
 class TextLocalizer:
-    def __init__(self, chart:Chart):
-        self._chart = chart
+    def __init__(self):
+        pass
 
-    def localize(self, preproc_scale = 1.5, debug=False):
+    def localize(self, chart, preproc_scale = 1.5, debug=False, method = 'default'):
 
-        img = self._chart.image
+        img = chart.image
 
         # pre-processing
         img = cv2.resize(img, None, fx=preproc_scale, fy=preproc_scale, interpolation=cv2.INTER_CUBIC)
         fh, fw, _ = img.shape
-
-        #cv2.imshow('img', img)
-        #cv2.waitkey(0)
-        #cv2.destroyAllWindows()  
-
-
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
         _, bw = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
 
-        #show_image('img', img, 0, 0)
-        #show_image('bw', 255-bw, 400, 0)
-
-        mask = bw.copy()
-        #show_image('mask', mask, 800, 0)
 
         # remove non-text regions
-        bw_text = apply_mask(bw, self._chart.pixel_mask)
-        # bw_text = bw
-        #show_image('bw_text', bw_text, 1200, 0)
+        bw_text = apply_mask(bw, chart.mask)
 
         # complete text-regions components
         bw_rec = binary_propagation(bw_text, mask=bw)
         bw_rec = bw_rec.astype('uint8') * 255
-        #show_image('bw_rec', 255-bw_rec, 0, 300)
-
         connected_comp, num_comp = morphology.label(bw_rec, return_num=True)
         regions = regionprops(connected_comp, cache=True)
         boxes = filter_regions(regions, preproc_scale)
 
-
         if debug:
             image_label_overlay = label2rgb(connected_comp, image=bw_rec, bg_label=0, bg_color=(1, 1, 1), alpha=1)
-
             show_image('connected components', image_label_overlay, 400, 300)
-            
             vis = u.draw_rects(cv2.cvtColor(bw_rec, cv2.COLOR_GRAY2BGR), boxes, thickness=2, color=(0, 0, 255))
             show_image('characters', vis, 800, 300)
 
@@ -75,8 +56,6 @@ class TextLocalizer:
         boxes = merge_characters(img, bw_rec, boxes, preproc_scale, debug)
 
         # Apply OCR and filter by confidence and filter
-        #boxes = ocr.run_ocr_in_boxes(img, boxes, pad=3, psm=PSM.SINGLE_WORD)
-
         boxes = ocr.run_ocr_in_boxes(img, boxes, pad=3, psm=8) #8 for single word
         min_conf = 25
         max_dist = 4
@@ -84,15 +63,12 @@ class TextLocalizer:
         min_conf = 40
         boxes = [box for box in boxes if box._text_conf > min_conf]
 
-
         if debug:
             vis = u.draw_rects(cv2.cvtColor(bw_rec, cv2.COLOR_GRAY2BGR), boxes, color=(0, 0, 255), thickness=2)
             show_image('after ocr conf', vis, 400, 600)
 
-        
         # merge words
         boxes = merge_words(img, boxes)
-
         if debug:
             vis = u.draw_rects(cv2.cvtColor(bw_rec, cv2.COLOR_GRAY2BGR), boxes, color=(0, 0, 255), thickness=2)
             show_image('after merging words', vis, 800, 600)
@@ -100,20 +76,23 @@ class TextLocalizer:
         vis = u.draw_boxes(img.copy(), boxes)
 
         # recover original image
-    
         for b in boxes:
             b._rect = [d / preproc_scale for d in b._rect]
-        vis2 = u.draw_boxes(self._chart.image, boxes)
+        vis2 = u.draw_boxes(chart.image, boxes)
 
         if debug:
             show_image('text', vis, 1200, 600)
             show_image('original', vis2, 0, 900)
 
+        return boxes
 
-        self._chart.set_text_boxes(boxes)
-        self._chart.update_prefix(2)
-        save_texts(boxes, self._chart.text_boxes_filename)
-        cv2.imwrite(self._chart.predicted_debug_name(from_bbs=2), vis2)
+        #self._chart.set_text_boxes(boxes)
+        #self._chart.update_prefix(2)
+        #save_texts(boxes, self._chart.text_boxes_filename)
+
+
+        # cambiar chart predicted debug
+        #cv2.imwrite(self._chart.predicted_debug_name(from_bbs=2), vis2)
 
 
         # random test

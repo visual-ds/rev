@@ -5,6 +5,10 @@ import numpy as np
 
 from .textbox import TextBox
 from . import utils as u
+from .text.mask_predictor import predict_mask
+
+import copy
+
 
 
 '''
@@ -81,6 +85,10 @@ class Chart(object):
 
         return self._texts
 
+    @text_boxes.setter
+    def text_boxes(self, values):
+        self._texts = values
+
     # setting the textboxes values     
     def set_text_boxes(self, texts):
         self._texts = texts 
@@ -91,34 +99,12 @@ class Chart(object):
 
     @property
     def mask(self, force_to_create=False):
-        fn = self._fn.replace('.png', self._prefix + '-mask.png')
+        fn = self._fn.replace('.png', self._prefix + '-mask.jpg')
         if not os.path.exists(fn) or force_to_create:
-            h, w, _ = self.image.shape
-            mask = create_mask((h, w), self.texts)
-            cv2.imwrite(fn, mask)
-
+            predict_mask(self)
+        
         return cv2.imread(fn, cv2.IMREAD_GRAYSCALE)
 
-    @property
-    def pixel_mask(self, force_to_create=False):
-        fn = self._fn.replace('.png', '-mask.png')
-        if not os.path.exists(fn) or force_to_create:
-            #Todo: levantar el model darknet
-            pass
-
-
-        #print(fn)
-        return cv2.imread(fn, cv2.IMREAD_GRAYSCALE)
-
-    # @property
-    # def pixel_mask(self, force_to_create=False):
-    #     fn = self._fn.replace('.png', 'predicted-mask.png')
-    #     if not os.path.exists(fn) or force_to_create:
-    #         # from mask_predictor import predict_mask
-    #         # predict_mask(self)
-    #         pass
-    #
-    #     return cv2.imread(fn, cv2.IMREAD_GRAYSCALE)
 
     @property
     def debug(self):
@@ -129,8 +115,20 @@ class Chart(object):
     def save_text_boxes(self):
         save_texts(self.text_boxes, self.text_boxes_filename)
 
-    def predicted_debug_name(self, from_bbs=1):
-        return self._fn.replace('.png', '-pred%d-debug.png' % from_bbs)
+    def save_debug_image(self):
+        if not os.path.exists(self.predicted_debug_name):
+            debug_image = u.draw_boxes(self.image, self.text_boxes)
+            cv2.imwrite(self.predicted_debug_name, debug_image)
+        
+    @property
+    def predicted_debug_name(self):
+        return self._fn.replace('.png', '{prefix}-debug.png'.format(prefix=self._prefix))
+
+    def copy(self, text_from = 0):
+        new_chart = copy.deepcopy(self)
+        new_chart.update_prefix(text_from)
+        return new_chart
+
 
 
 def create_mask(h, w, texts):
