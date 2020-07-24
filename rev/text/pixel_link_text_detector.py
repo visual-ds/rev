@@ -3,7 +3,8 @@ import tf_slim as slim
 from tensorflow.python.ops import array_ops
 from . import pixel_link_net
 import numpy as np
-import cv2
+#import cv2
+from cv2 import cv2
 import os
 
 r_mean = 123.
@@ -17,7 +18,6 @@ tf.compat.v1.disable_eager_execution()
 
 CWD = os.path.dirname(os.path.abspath(__file__))
 text_detection_model_path =  os.path.join(CWD, '..','..','models','pixel_link_text_detection','model.ckpt-46231')
-
 
 def image_whitened(image):
     means=[r_mean, g_mean, b_mean]
@@ -174,7 +174,7 @@ def imread(path, rgb = False, mode = None):
 
 def cast(obj, dtype):
     if isinstance(obj, list):
-        return np.asarray(obj, dtype = floatX)
+        return np.asarray(obj, dtype = tf.keras.backend.floatx())
     return np.cast[dtype](obj)
 
 def resize(img, size = None, f = None, fx = None, fy = None, interpolation = cv2.INTER_LINEAR):
@@ -193,6 +193,8 @@ def resize(img, size = None, f = None, fx = None, fy = None, interpolation = cv2
 
 def find_contours(mask, method = cv2.CHAIN_APPROX_SIMPLE):
 
+
+
     mask = np.asarray(mask, dtype = np.uint8)
     mask = mask.copy()
     try:
@@ -201,6 +203,8 @@ def find_contours(mask, method = cv2.CHAIN_APPROX_SIMPLE):
     except:
         _, contours, _ = cv2.findContours(mask, mode = cv2.RETR_CCOMP, 
                                   method = method)
+
+
     return contours
 
 
@@ -244,20 +248,37 @@ def mask_to_bboxes(mask, image_shape, min_area = 300, min_height = 10):
     max_bbox_idx = mask.max()
     mask = resize(img = mask, size = (image_w, image_h), interpolation = cv2.INTER_NEAREST)
     
+    
+    mask2 = np.where(mask == 0, 0, 255)
+
+    img = np.zeros(image_shape)
+    #cv2.imwrite('/home/joao/Documents/repos/rev/examples/mask.png', mask)
+    #cv2.imshow('mask', mask)
+    #cv2.waitKey(0)
+    #cv2.destroyAllWindows() 
+    
+    #print('max', max_bbox_idx)
     for bbox_idx in range(1, max_bbox_idx + 1):
         bbox_mask = mask == bbox_idx
         cnts = find_contours(bbox_mask)
+
+        #cv2.drawContours(img, cnts, -1, (255,255,255), 1)
+        #cv2.imwrite('/home/joao/Documents/repos/rev/examples/mask-contours_{n}.png'.format(n = bbox_idx), img)
+
         if len(cnts) == 0:
             continue
         cnt = cnts[0]
         rect, rect_area = min_area_rect(cnt)
 
         w, h = rect[2:-1]
+        #print('joao', min(w, h), w, h)
         if min(w, h) < min_height:
             continue
         xys = rect_to_xys(rect, image_shape)
         bboxes.append(xys)
     
+    #cv2.imwrite('/home/joao/Documents/repos/rev/examples/mask-contours.png', img)
+
     return bboxes
 
 
@@ -272,12 +293,15 @@ def text_detect(path_image, path_model = text_detection_model_path, img_width = 
             image = tf.compat.v1.placeholder(dtype=tf.int32, shape=[None, None, 3])
             image_shape = tf.compat.v1.placeholder(dtype=tf.int32, shape=[3, ])
 
-            processed_image = preprocess_image(image, (img_width, img_height))
+            processed_image = preprocess_image(image, (img_height, img_width))
 
             b_image = tf.expand_dims(processed_image, axis=0)
 
             net = pixel_link_net.PixelLinkNet(b_image, is_training = False)
+
             masks = tf_decode_score_map_to_mask_in_batch(net.pixel_pos_scores, net.link_pos_scores)
+
+            #print('mask type: ', type( masks ) )
 
 
     sess_config = tf.compat.v1.ConfigProto(log_device_placement=False, allow_soft_placement=True)
@@ -286,7 +310,9 @@ def text_detect(path_image, path_model = text_detection_model_path, img_width = 
     variables_to_restore = variable_averages.variables_to_restore( tf.compat.v1.trainable_variables())
     variables_to_restore[global_step.op.name] = global_step
     saver = tf.compat.v1.train.Saver(var_list=variables_to_restore)
+
     with tf.compat.v1.Session() as sess:
+
         saver.restore(sess, path_model)
         image_data = imread(path_image)
         h, w, _ = image_data.shape
@@ -301,6 +327,7 @@ def text_detect(path_image, path_model = text_detection_model_path, img_width = 
         image_idx = 0
         pixel_score = pixel_scores[image_idx, ...]
         mask = mask_vals[image_idx, ...]
+
         bboxes_det = mask_to_bboxes(mask, image_data.shape)
 
         #recovery original coords

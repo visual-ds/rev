@@ -1,11 +1,16 @@
 import numpy as np
 from PIL import ImageDraw, ImageFont, Image
 import os
-import cv2
+from cv2 import cv2
+
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+
 
 CWD = os.path.dirname(os.path.abspath(__file__))
 
-unicode_font = ImageFont.truetype(os.path.join(CWD, '../fonts/Arial Unicode.ttf'), 12)
+unicode_font = ImageFont.truetype(
+    os.path.join(CWD, '../fonts/Arial Unicode.ttf'), 12)
 
 
 text_colors = {
@@ -20,7 +25,6 @@ text_colors = {
     '-':            '#aaaaaa',
     '': '#000000'
 }
-
 
 
 def rgba2rgb(img):
@@ -99,7 +103,8 @@ def draw_rects(img, rects, color=(0, 0, 255), thickness=1, invert=True):
         rects = [box._rect for box in rects]
 
     for x, y, w, h in rects:
-        cv2.rectangle(img, ttoi((x, y)), ttoi((x+w-1, y+h-1)), color, thickness=thickness)
+        cv2.rectangle(img, ttoi((x, y)), ttoi(
+            (x+w-1, y+h-1)), color, thickness=thickness)
 
     return img
 
@@ -110,7 +115,6 @@ def draw_graph(img, graph, vertices, thickness=1, color=(0, 255, 255)):
         cv2.line(img, ttoi(ci), ttoi(cj), color=color, thickness=thickness)
 
     return img
-
 
 
 def unit_vector(vector):
@@ -152,7 +156,7 @@ def draw_boxes(img, boxes):
     for b in boxes:
         draw.text((b.x, b.y - 16), b.text, fill=(255, 0, 0), font=unicode_font)
 
-    #return smp.fromimage(Image.alpha_composite(vis, rects))
+    # return smp.fromimage(Image.alpha_composite(vis, rects))
     return np.asarray(Image.alpha_composite(vis, rects))
 
 
@@ -163,3 +167,85 @@ def is_number(s):
         return False
 
     return True
+
+
+# added by jaox
+
+def show_image(name, image, x=0, y=0):
+    imgplot = plt.imshow(image)
+    plt.gcf().canvas.set_window_title(name)
+    plt.show()
+
+
+def order_points(pts):
+        # initialzie a list of coordinates that will be ordered
+        # such that the first entry in the list is the top-left,
+        # the second entry is the top-right, the third is the
+        # bottom-right, and the fourth is the bottom-left
+    rect = np.zeros((4, 2), dtype="float32")
+    # the top-left point will have the smallest sum, whereas
+
+    # the bottom-right point will have the largest sum
+    s = pts.sum(axis=1)
+    rect[0] = pts[np.argmin(s)]
+    rect[2] = pts[np.argmax(s)]
+
+
+    # now, compute the difference between the points, the
+    # top-right point will have the smallest difference,
+    # whereas the bottom-left will have the largest difference
+    diff = np.diff(pts, axis=1)
+    rect[1] = pts[np.argmin(diff)]
+    rect[3] = pts[np.argmax(diff)]
+    # return the ordered coordinates
+
+    return rect
+
+
+def four_point_transform(image, pts, scale_factor=5):
+    # obtain a consistent order of the points and unpack them
+    # individually
+    #img_temp = image.copy()
+    #cv2.polylines(img_temp, [pts], True, (0, 0, 255))
+    #print(pts)
+    #show_image('pts', img_temp)
+    
+    #rect = order_points(pts)
+    rect = pts.astype(np.float32)
+
+    (tl, tr, br, bl) = rect
+
+    
+    # compute the width of the new image, which will be the
+    # maximum distance between bottom-right and bottom-left
+    # x-coordiates or the top-right and top-left x-coordinates
+    widthA = np.sqrt(((br[0] - bl[0]) ** 2) +
+                     ((br[1] - bl[1]) ** 2))*scale_factor
+    widthB = np.sqrt(((tr[0] - tl[0]) ** 2) +
+                     ((tr[1] - tl[1]) ** 2))*scale_factor
+    maxWidth = max(int(widthA), int(widthB))
+
+    # compute the height of the new image, which will be the
+    # maximum distance between the top-right and bottom-right
+    # y-coordinates or the top-left and bottom-left y-coordinates
+    heightA = np.sqrt(((tr[0] - br[0]) ** 2) +
+                      ((tr[1] - br[1]) ** 2))*scale_factor
+    heightB = np.sqrt(((tl[0] - bl[0]) ** 2) +
+                      ((tl[1] - bl[1]) ** 2))*scale_factor
+    maxHeight = max(int(heightA), int(heightB))
+    # now that we have the dimensions of the new image, construct
+    # the set of destination points to obtain a "birds eye view",
+    # (i.e. top-down view) of the image, again specifying points
+    # in the top-left, top-right, bottom-right, and bottom-left
+    # order
+    dst = np.array([
+        [0, 0],
+        [maxWidth - 1, 0],
+        [maxWidth - 1, maxHeight - 1],
+        [0, maxHeight - 1]], dtype="float32")
+
+    # compute the perspective transform matrix and then apply it
+    M = cv2.getPerspectiveTransform(rect, dst)
+    warped = cv2.warpPerspective(image, M, (maxWidth, maxHeight))
+    # return the warped image
+    return warped

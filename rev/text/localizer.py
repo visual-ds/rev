@@ -1,4 +1,5 @@
-import cv2
+#import cv2
+from cv2 import cv2
 import os
 import math
 import itertools
@@ -23,6 +24,11 @@ import numpy as np
 
 from numpy import random
 
+
+
+#temporal
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
 
 
 class TextLocalizer:
@@ -93,32 +99,70 @@ class TextLocalizer:
         #apply the pixel_link detector
         points = text_detect(chart.filename)
 
-        #Convert to bboxes
+        print('original len points ', len(points))
+
+
+        if debug:
+            img_temp = chart.image.copy()
+            for i, bbox in enumerate(points):
+                pts = np.array([[bbox[0],bbox[1]],[bbox[2],bbox[3]],[bbox[4],bbox[5]],[bbox[6],bbox[7]]], np.int32)
+                pts = pts.reshape((-1,1,2))
+                cv2.polylines(img_temp,[pts],True,(0,0,255))
+
+                cv2.putText(img_temp, str(i), (bbox[0],bbox[1]), cv2.FONT_HERSHEY_SIMPLEX, 0.4, 255)
+            
+            show_image('pixel_link bboxes', img_temp)
+
+     
         points = [ e.reshape(-1,2) for e in np.array(points)]
 
-        boxes = []
+        print('reshaped len points ', len(points))
+
+    
+        # Apply OCR and filter by confidence and filter
+        img = chart.image.copy()
+
+        #boxes = ocr.run_ocr_in_points_boxes(img, points, pad=3, psm=8, debug=False)
+        boxes2 = []
         for i, point in enumerate(points):
             xmin = min(point, key = lambda t: t[0])[0]
             ymin = min(point, key = lambda t: t[1])[1]
             xmax = max(point, key = lambda t: t[0])[0]
             ymax = max(point, key = lambda t: t[1])[1]
-            boxes.append(TextBox(i, xmin, ymin, xmax-xmin, ymax-ymin))
+            boxes2.append(TextBox(i, xmin, ymin, xmax-xmin, ymax-ymin))
+
+        boxes = ocr.run_ocr_in_boxes(img, boxes2, pad=3, psm=8) #8 for single word
+        #min_conf = 40
+        #boxes = [box for box in boxes if box._text_conf > min_conf]
+
+        if debug:
+            img_temp = chart.image.copy()
+            img_temp = u.draw_boxes(img_temp, boxes)
+            show_image('bboxes from points after ocr', img_temp)
 
 
-        # Apply OCR and filter by confidence and filter
-        img = chart.image.copy()
-        boxes = ocr.run_ocr_in_boxes(img, boxes, pad=3, psm=8) #8 for single word
-        min_conf = 25
-        max_dist = 4
-        boxes = [box for box in boxes if box._text_conf > min_conf and box._text_dist < max_dist]
-        min_conf = 40
-        boxes = [box for box in boxes if box._text_conf > min_conf]
+        if debug:
+            img_temp = chart.image.copy()
+            img_temp = u.draw_boxes(img_temp, boxes2)
+            show_image('bboxes from points', img_temp)
+
+
+        #boxes = ocr.run_ocr_in_boxes(img, boxes, pad=3, psm=8) #8 for single word
+
+        #min_conf = 25
+        #max_dist = 4
+        #boxes = [box for box in boxes if box._text_conf > min_conf and box._text_dist < max_dist]
+        #min_conf = 40
+        #boxes = [box for box in boxes if box._text_conf > min_conf]
+
+        
+
+        boxes = merge_words(img, boxes)
 
         vis = u.draw_boxes(img.copy(), boxes)
 
         if debug:
-            cv2.imshow('img', vis)
-            #show_image('text', img, 1200, 600)
+            show_image('merged bboxes', vis)
 
         return boxes
         
@@ -130,11 +174,7 @@ class TextLocalizer:
         elif method == 'pixel_link':
             return self.pixel_link_localize(chart, debug)
         else:
-            raise Exception('method parameter only supports: "default" or "pixel_link"')
-
-
-def randombox(id, w , h):
-    return TextBox(id, random.randint(h), random.randint(w), w/random.randint(3,10), h/random.randint(3,10) )
+            raise Exception('wrong "method" parameter, only supports: "default" or "pixel_link"')
 
 
 
@@ -184,11 +224,16 @@ def filter_regions(regions, scale):
 
 
 def show_image(name, image, x=0, y=0):
-    new_name = '%s - %s - [%0.2f, %0.2f] - %s' % (name, image.shape, image.min(), image.max(), image.dtype.name)
-    cv2.imshow(new_name, image)
-    cv2.moveWindow(new_name, x, y)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()  
+    imgplot = plt.imshow(image)
+    plt.gcf().canvas.set_window_title(name)
+    plt.show()
+    
+    #new_name = '%s - %s - [%0.2f, %0.2f] - %s' % (name, image.shape, image.min(), image.max(), image.dtype.name)
+    #image = image.astype(np.uint8)
+    #cv2.imshow(new_name, image)
+    #cv2.moveWindow(new_name, x, y
+    #cv2.waitKey(0)
+    #cv2.destroyAllWindows()
 
 
 
