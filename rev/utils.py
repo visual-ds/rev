@@ -239,10 +239,11 @@ def four_point_transform(image, pts, scale_factor=5):
     # in the top-left, top-right, bottom-right, and bottom-left
     # order
     dst = np.array([
-        [0, 0],
-        [maxWidth - 1, 0],
         [maxWidth - 1, maxHeight - 1],
-        [0, maxHeight - 1]], dtype="float32")
+        [0, maxHeight - 1],
+         [0, 0],
+        [maxWidth - 1, 0]],
+        dtype="float32")
 
     # compute the perspective transform matrix and then apply it
     M = cv2.getPerspectiveTransform(rect, dst)

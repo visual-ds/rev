@@ -10,7 +10,7 @@ from .. import utils as u
 from . import rectutils as ru
 from . import ocr
 
-from . pixel_link_text_detector import text_detect
+from . pixel_link_text_detector import text_detect, PixelLinkDetector
 
 from scipy.ndimage.morphology import binary_propagation
 from scipy.spatial.distance import pdist, squareform, euclidean
@@ -31,148 +31,164 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 
 
+
 class TextLocalizer:
-    def __init__(self):
-        pass
+    def __init__(self, method = 'default'):
+        self._method = method
 
-    def default_localize(self, chart, preproc_scale = 1.5, debug=False):
-        img = chart.image
-
-        # pre-processing
-        img = cv2.resize(img, None, fx=preproc_scale, fy=preproc_scale, interpolation=cv2.INTER_CUBIC)
-        fh, fw, _ = img.shape
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        _, bw = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
+        if self._method == 'pixel_link':
+            self._pixel_link_detector = PixelLinkDetector()
+            self._pixel_link_detector.init()
 
 
-        # remove non-text regions
-        bw_text = apply_mask(bw, chart.mask)
+    def default_localize(self, charts, preproc_scale = 1.5, debug=False):
 
-        # complete text-regions components
-        bw_rec = binary_propagation(bw_text, mask=bw)
-        bw_rec = bw_rec.astype('uint8') * 255
-        connected_comp, num_comp = morphology.label(bw_rec, return_num=True)
-        regions = regionprops(connected_comp, cache=True)
-        boxes = filter_regions(regions, preproc_scale)
+        lsboxes = []
 
-        if debug:
-            image_label_overlay = label2rgb(connected_comp, image=bw_rec, bg_label=0, bg_color=(1, 1, 1), alpha=1)
-            show_image('connected components', image_label_overlay, 400, 300)
-            vis = u.draw_rects(cv2.cvtColor(bw_rec, cv2.COLOR_GRAY2BGR), boxes, thickness=2, color=(0, 0, 255))
-            show_image('characters', vis, 800, 300)
+        for chart in charts:
+            img = chart.image
 
-        # merging characters
-        boxes = merge_characters(img, bw_rec, boxes, preproc_scale, debug)
-
-        # Apply OCR and filter by confidence and filter
-        boxes = ocr.run_ocr_in_boxes(img, boxes, pad=3, psm=8) #8 for single word
-        min_conf = 25
-        max_dist = 4
-        boxes = [box for box in boxes if box._text_conf > min_conf and box._text_dist < max_dist]
-        min_conf = 40
-        boxes = [box for box in boxes if box._text_conf > min_conf]
-
-        if debug:
-            vis = u.draw_rects(cv2.cvtColor(bw_rec, cv2.COLOR_GRAY2BGR), boxes, color=(0, 0, 255), thickness=2)
-            show_image('after ocr conf', vis, 400, 600)
-
-        # merge words
-        boxes = merge_words(img, boxes)
-        if debug:
-            vis = u.draw_rects(cv2.cvtColor(bw_rec, cv2.COLOR_GRAY2BGR), boxes, color=(0, 0, 255), thickness=2)
-            show_image('after merging words', vis, 800, 600)
-
-        vis = u.draw_boxes(img.copy(), boxes)
-
-        # recover original image
-        for b in boxes:
-            b._rect = [d / preproc_scale for d in b._rect]
-        vis2 = u.draw_boxes(chart.image, boxes)
-
-        if debug:
-            show_image('text', vis, 1200, 600)
-            show_image('original', vis2, 0, 900)
-
-        return boxes
-
-    def pixel_link_localize(self, chart, debug=False):
-        #apply the pixel_link detector
-        points = text_detect(chart.filename)
-
-        print('original len points ', len(points))
+            # pre-processing
+            img = cv2.resize(img, None, fx=preproc_scale, fy=preproc_scale, interpolation=cv2.INTER_CUBIC)
+            fh, fw, _ = img.shape
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            _, bw = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
 
 
-        if debug:
-            img_temp = chart.image.copy()
-            for i, bbox in enumerate(points):
-                pts = np.array([[bbox[0],bbox[1]],[bbox[2],bbox[3]],[bbox[4],bbox[5]],[bbox[6],bbox[7]]], np.int32)
-                pts = pts.reshape((-1,1,2))
-                cv2.polylines(img_temp,[pts],True,(0,0,255))
+            # remove non-text regions
+            bw_text = apply_mask(bw, chart.mask)
 
-                cv2.putText(img_temp, str(i), (bbox[0],bbox[1]), cv2.FONT_HERSHEY_SIMPLEX, 0.4, 255)
+            # complete text-regions components
+            bw_rec = binary_propagation(bw_text, mask=bw)
+            bw_rec = bw_rec.astype('uint8') * 255
+            connected_comp, num_comp = morphology.label(bw_rec, return_num=True)
+            regions = regionprops(connected_comp, cache=True)
+            boxes = filter_regions(regions, preproc_scale)
+
+            if debug:
+                image_label_overlay = label2rgb(connected_comp, image=bw_rec, bg_label=0, bg_color=(1, 1, 1), alpha=1)
+                show_image('connected components', image_label_overlay, 400, 300)
+                vis = u.draw_rects(cv2.cvtColor(bw_rec, cv2.COLOR_GRAY2BGR), boxes, thickness=2, color=(0, 0, 255))
+                show_image('characters', vis, 800, 300)
+
+            # merging characters
+            boxes = merge_characters(img, bw_rec, boxes, preproc_scale, debug)
+
+            # Apply OCR and filter by confidence and filter
+            boxes = ocr.run_ocr_in_boxes(img, boxes, pad=3, psm=8) #8 for single word
+            min_conf = 25
+            max_dist = 4
+            boxes = [box for box in boxes if box._text_conf > min_conf and box._text_dist < max_dist]
+            min_conf = 40
+            boxes = [box for box in boxes if box._text_conf > min_conf]
+
+            if debug:
+                vis = u.draw_rects(cv2.cvtColor(bw_rec, cv2.COLOR_GRAY2BGR), boxes, color=(0, 0, 255), thickness=2)
+                show_image('after ocr conf', vis, 400, 600)
+
+            # merge words
+            boxes = merge_words(img, boxes)
+            if debug:
+                vis = u.draw_rects(cv2.cvtColor(bw_rec, cv2.COLOR_GRAY2BGR), boxes, color=(0, 0, 255), thickness=2)
+                show_image('after merging words', vis, 800, 600)
+
+            vis = u.draw_boxes(img.copy(), boxes)
+
+            # recover original image
+            for b in boxes:
+                b._rect = [d / preproc_scale for d in b._rect]
+            vis2 = u.draw_boxes(chart.image, boxes)
+
+            if debug:
+                show_image('text', vis, 1200, 600)
+                show_image('original', vis2, 0, 900)
+
+            lsboxes.append(boxes)
+        
+        return lsboxes
+
+    def pixel_link_localize(self, charts, debug=False):
+
+        img_paths = [chart.filename for chart in charts]
+        lspoints = self._pixel_link_detector.predict_multiple(img_paths)
+        lsboxes = []
+
+        for index, chart in enumerate(charts):
+
+            points = lspoints[index]
+
+            if debug:
+                img_temp = chart.image.copy()
+                for i, bbox in enumerate(points):
+                    pts = np.array([[bbox[0],bbox[1]],[bbox[2],bbox[3]],[bbox[4],bbox[5]],[bbox[6],bbox[7]]], np.int32)
+                    pts = pts.reshape((-1,1,2))
+                    cv2.polylines(img_temp,[pts],True,(0,0,255))
+
+                    cv2.putText(img_temp, str(i), (bbox[0],bbox[1]), cv2.FONT_HERSHEY_SIMPLEX, 0.4, 255)
+                
+                show_image('pixel_link bboxes', img_temp)
+
+        
+            points = [ e.reshape(-1,2) for e in np.array(points)]
+
+        
+            # Apply OCR and filter by confidence and filter
+            img = chart.image.copy()
+
+            boxes = ocr.run_ocr_in_points_boxes(img, points, pad=3, psm=8, debug=False)
+            boxes2 = []
+            for i, point in enumerate(points):
+                xmin = min(point, key = lambda t: t[0])[0]
+                ymin = min(point, key = lambda t: t[1])[1]
+                xmax = max(point, key = lambda t: t[0])[0]
+                ymax = max(point, key = lambda t: t[1])[1]
+                boxes2.append(TextBox(i, xmin, ymin, xmax-xmin, ymax-ymin))
+
+            #boxes = ocr.run_ocr_in_boxes(img, boxes2, pad=3, psm=8, debug=True) #8 for single word
             
-            show_image('pixel_link bboxes', img_temp)
 
-     
-        points = [ e.reshape(-1,2) for e in np.array(points)]
+            if debug:
+                img_temp = chart.image.copy()
+                img_temp = u.draw_boxes(img_temp, boxes)
+                show_image('bboxes from points after ocr', img_temp)
 
-        print('reshaped len points ', len(points))
 
+            if debug:
+                img_temp = chart.image.copy()
+                img_temp = u.draw_boxes(img_temp, boxes2)
+                show_image('bboxes from points', img_temp)
+
+
+            #boxes = ocr.run_ocr_in_boxes(img, boxes, pad=3, psm=8) #8 for single word
+
+            #min_conf = 25
+            #boxes = [box for box in boxes if box._text_conf > min_conf]
+
+            #min_conf = 25
+            #max_dist = 4
+            #boxes = [box for box in boxes if box._text_conf > min_conf and box._text_dist < max_dist]
+            #min_conf = 40
+            #boxes = [box for box in boxes if box._text_conf > min_conf]
+
+            boxes = merge_words(img, boxes)
+
+            vis = u.draw_boxes(img.copy(), boxes)
+
+            if debug:
+                show_image('merged bboxes', vis)
+
+            lsboxes.append(boxes)
     
-        # Apply OCR and filter by confidence and filter
-        img = chart.image.copy()
-
-        #boxes = ocr.run_ocr_in_points_boxes(img, points, pad=3, psm=8, debug=False)
-        boxes2 = []
-        for i, point in enumerate(points):
-            xmin = min(point, key = lambda t: t[0])[0]
-            ymin = min(point, key = lambda t: t[1])[1]
-            xmax = max(point, key = lambda t: t[0])[0]
-            ymax = max(point, key = lambda t: t[1])[1]
-            boxes2.append(TextBox(i, xmin, ymin, xmax-xmin, ymax-ymin))
-
-        boxes = ocr.run_ocr_in_boxes(img, boxes2, pad=3, psm=8) #8 for single word
-        #min_conf = 40
-        #boxes = [box for box in boxes if box._text_conf > min_conf]
-
-        if debug:
-            img_temp = chart.image.copy()
-            img_temp = u.draw_boxes(img_temp, boxes)
-            show_image('bboxes from points after ocr', img_temp)
-
-
-        if debug:
-            img_temp = chart.image.copy()
-            img_temp = u.draw_boxes(img_temp, boxes2)
-            show_image('bboxes from points', img_temp)
-
-
-        #boxes = ocr.run_ocr_in_boxes(img, boxes, pad=3, psm=8) #8 for single word
-
-        #min_conf = 25
-        #max_dist = 4
-        #boxes = [box for box in boxes if box._text_conf > min_conf and box._text_dist < max_dist]
-        #min_conf = 40
-        #boxes = [box for box in boxes if box._text_conf > min_conf]
-
+        return lsboxes
         
 
-        boxes = merge_words(img, boxes)
-
-        vis = u.draw_boxes(img.copy(), boxes)
-
-        if debug:
-            show_image('merged bboxes', vis)
-
-        return boxes
+    def localize(self, charts, debug=False):
         
+        if self._method == 'default':
+            return self.default_localize(charts, 1.5, debug)
 
-    def localize(self, chart, debug=False, method = 'default'):
-        if method == 'default':
-            return self.default_localize(chart, 1.5, debug)
-
-        elif method == 'pixel_link':
-            return self.pixel_link_localize(chart, debug)
+        elif self._method == 'pixel_link':
+            return self.pixel_link_localize(charts, debug)
         else:
             raise Exception('wrong "method" parameter, only supports: "default" or "pixel_link"')
 

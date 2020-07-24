@@ -102,6 +102,18 @@ def run_ocr_in_points_boxes(img, point_set, pad=0, psm=PSM.SINGLE_LINE, debug=Fa
         #if i in [14]:
         #u.show_image('ex', roi_bw)
 
+        border_size = 3
+        roi_bw = cv2.copyMakeBorder(roi_bw, 
+                 border_size, 
+                 border_size, 
+                 border_size, 
+                 border_size, 
+                 cv2.BORDER_CONSTANT, 
+                 value=255
+        )
+
+        #u.show_image('ex', roi_bw)
+
         pil_img = Image.fromarray(roi_bw)
         
         max_conf = -np.inf
@@ -109,7 +121,7 @@ def run_ocr_in_points_boxes(img, point_set, pad=0, psm=PSM.SINGLE_LINE, debug=Fa
         correct_text = ''
         correct_angle = 0
         
-        for angle in [0, 90, 180, 270]:
+        for angle in [0, -90, 90]:
             rot_img = pil_img.rotate(angle, expand=1)
             api.SetImage(rot_img)
             conf = api.MeanTextConf()
@@ -183,6 +195,7 @@ def run_ocr_in_boxes(img, boxes, pad=0, psm=PSM.SINGLE_LINE, debug = False):
 
         # when testing boxes from csv files
         if box.num_comp == 0:
+            #print('hiiiiiiiiiiiii')
             # Apply Contrast Limited Adaptive Histogram Equalization
             roi_gray2 = clahe.apply(roi_gray)
             _, roi_bw2 = cv2.threshold(roi_gray2, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)

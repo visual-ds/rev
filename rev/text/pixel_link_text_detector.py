@@ -248,23 +248,13 @@ def mask_to_bboxes(mask, image_shape, min_area = 300, min_height = 10):
     max_bbox_idx = mask.max()
     mask = resize(img = mask, size = (image_w, image_h), interpolation = cv2.INTER_NEAREST)
     
-    
     mask2 = np.where(mask == 0, 0, 255)
-
     img = np.zeros(image_shape)
-    #cv2.imwrite('/home/joao/Documents/repos/rev/examples/mask.png', mask)
-    #cv2.imshow('mask', mask)
-    #cv2.waitKey(0)
-    #cv2.destroyAllWindows() 
+
     
-    #print('max', max_bbox_idx)
     for bbox_idx in range(1, max_bbox_idx + 1):
         bbox_mask = mask == bbox_idx
         cnts = find_contours(bbox_mask)
-
-        #cv2.drawContours(img, cnts, -1, (255,255,255), 1)
-        #cv2.imwrite('/home/joao/Documents/repos/rev/examples/mask-contours_{n}.png'.format(n = bbox_idx), img)
-
         if len(cnts) == 0:
             continue
         cnt = cnts[0]
@@ -276,10 +266,75 @@ def mask_to_bboxes(mask, image_shape, min_area = 300, min_height = 10):
             continue
         xys = rect_to_xys(rect, image_shape)
         bboxes.append(xys)
-    
-    #cv2.imwrite('/home/joao/Documents/repos/rev/examples/mask-contours.png', img)
-
     return bboxes
+
+class PixelLinkDetector:
+    def __init__(self, path_model=text_detection_model_path, preproc_img_w = 1280, preproc_img_h = 768):
+        self.path_model = path_model
+        self.preproc_img_w = preproc_img_w
+        self.preproc_img_h = preproc_img_h
+
+        #need for use tf 2
+        tf.compat.v1.disable_eager_execution()
+    
+    def init(self):
+        tf.reset_default_graph()
+        global_step = slim.get_or_create_global_step()
+
+        with tf.compat.v1.name_scope('evaluation_%dx%d' % (self.preproc_img_h, self.preproc_img_w)):
+            with tf.compat.v1.variable_scope(tf.compat.v1.get_variable_scope(), reuse=False):
+                self.image = tf.compat.v1.placeholder(dtype=tf.int32, shape=[None, None, 3])
+                self.image_shape = tf.compat.v1.placeholder(dtype=tf.int32, shape=[3, ])
+                processed_image = preprocess_image(self.image, (self.preproc_img_h, self.preproc_img_w))
+                b_image = tf.expand_dims(processed_image, axis=0)
+                self.net = pixel_link_net.PixelLinkNet(b_image, is_training = False)
+                self.masks = tf_decode_score_map_to_mask_in_batch(self.net.pixel_pos_scores, self.net.link_pos_scores)
+        
+
+        sess_config = tf.compat.v1.ConfigProto(log_device_placement=False, allow_soft_placement=True)
+        variable_averages = tf.train.ExponentialMovingAverage(0.9999)
+        variables_to_restore = variable_averages.variables_to_restore( tf.compat.v1.trainable_variables())
+        variables_to_restore[global_step.op.name] = global_step
+        self.saver = tf.compat.v1.train.Saver(var_list=variables_to_restore)
+
+        self.session = tf.compat.v1.Session()
+        self.saver.restore(self.session, self.path_model)
+
+    def predict(self, img_path, image_idx = 0):
+        image_data = imread(img_path)
+        h, w, _ = image_data.shape
+
+        #filter
+        scale_factor = 1.5
+        image_data = cv2.resize(image_data,(int(w*scale_factor),int(h*scale_factor)), interpolation=cv2.INTER_AREA)
+        image_data = cv2.GaussianBlur(image_data,(7,7),sigmaX = 5, sigmaY=1)
+
+        #apply model
+        link_scores, pixel_scores, mask_vals = self.session.run([self.net.link_pos_scores, self.net.pixel_pos_scores, self.masks], feed_dict={self.image: image_data})
+
+        pixel_score = pixel_scores[image_idx, ...]
+        mask = mask_vals[image_idx, ...]
+
+        bboxes_det = mask_to_bboxes(mask, image_data.shape)
+
+        #recovery original coords
+        bboxes_det_aux = []
+        for bbox in bboxes_det:
+            bbox = bbox/scale_factor
+            bbox = bbox.astype(int)
+            bboxes_det_aux.append(bbox)
+        bboxes_det = bboxes_det_aux
+
+        return bboxes_det
+
+    def predict_multiple(self, img_paths):
+
+        lsboxes = []
+        for i, img_path in enumerate(img_paths):
+            lsboxes.append( self.predict(img_path, i) )
+
+        return lsboxes
+
 
 
 def text_detect(path_image, path_model = text_detection_model_path, img_width = 1280, img_height = 768):
@@ -305,7 +360,7 @@ def text_detect(path_image, path_model = text_detection_model_path, img_width = 
 
 
     sess_config = tf.compat.v1.ConfigProto(log_device_placement=False, allow_soft_placement=True)
-    sess_config.gpu_options.allow_growth = True
+    #sess_config.gpu_options.allow_growth = True
     variable_averages = tf.train.ExponentialMovingAverage(0.9999)
     variables_to_restore = variable_averages.variables_to_restore( tf.compat.v1.trainable_variables())
     variables_to_restore[global_step.op.name] = global_step
@@ -314,6 +369,9 @@ def text_detect(path_image, path_model = text_detection_model_path, img_width = 
     with tf.compat.v1.Session() as sess:
 
         saver.restore(sess, path_model)
+
+        #####
+
         image_data = imread(path_image)
         h, w, _ = image_data.shape
 
