@@ -1,6 +1,6 @@
 import numpy as np
 from collections import OrderedDict
-import cv2
+from cv2 import cv2
 from .text import rectutils as ru
 
 
@@ -16,6 +16,8 @@ class TextBox(object):
         self._text_angle = text_angle
 
         self._regions = []  # the connected components
+
+        self._number = None
 
     def __str__(self):
         return 'bbox[{4}]: [{0} {1} {2} {3}] : [{5}] : [{6}]'\
@@ -108,6 +110,8 @@ class TextBox(object):
         row['id'] = self._id
         row['x'] = self.x
         row['y'] = self.y
+        row['xc'] = self.xc
+        row['yc'] = self.yc
         row['width'] = self.w
         row['height'] = self.h
         row['text'] = self._text

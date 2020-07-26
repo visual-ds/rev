@@ -1,4 +1,4 @@
-import cv2
+from cv2 import cv2
 import pandas as pd
 import os.path
 import numpy as np
@@ -33,7 +33,6 @@ class Chart(object):
         self._fn = fn
         self._id = _id
         self._text_from = text_from
-
         self._image = None
         self._texts = None
         self._mark_type = None
