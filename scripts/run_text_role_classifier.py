@@ -27,7 +27,8 @@ Examples:
   python scripts/run_text_role_classifier.py multiple data/academic.txt
 """
 
-
+import sys
+sys.path.append(".")
 
 from docopt import docopt
 from joblib import Parallel, delayed
@@ -37,8 +38,8 @@ import pandas as pd
 import pandas as pd
 
 
-import rev.text
 
+import rev.text
 
 from rev import Chart, chart_dataset
 

@@ -4,7 +4,8 @@ from tensorflow.python.ops import array_ops
 from . import pixel_link_net
 import numpy as np
 #import cv2
-from cv2 import cv2
+#from cv2 import cv2
+import cv2
 import os
 
 r_mean = 123.

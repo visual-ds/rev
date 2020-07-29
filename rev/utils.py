@@ -1,7 +1,8 @@
 import numpy as np
 from PIL import ImageDraw, ImageFont, Image
 import os
-from cv2 import cv2
+#from cv2 import cv2
+import cv2
 
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg

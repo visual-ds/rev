@@ -1,2 +1,2 @@
 from .classifier import TextClassifier
-#from . import rectutils
+#from .localizer import TextLocalizer

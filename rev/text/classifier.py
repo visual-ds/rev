@@ -105,7 +105,16 @@ class TextClassifier:
         cm = metrics.confusion_matrix(true_types, pred_type, labels=labels)
         u.print_cm(cm, labels=labels)
 
-    def classify(self, chart, with_post=False, draw_debug=False, pad=0, save=False):
+    def classify(self, charts, with_post=False, draw_debug=False, pad=0, save=False):
+        
+        ls_pred_types = []
+        for chart in charts:
+            pred_types = self.classify_single(chart, with_post, draw_debug, pad, save)
+            ls_pred_types.append(pred_types)
+        
+        return ls_pred_types
+
+    def classify_single(self, chart, with_post=False, draw_debug=False, pad=0, save=False):
         """
         Classify text boxes in a chart and save them in a cvs file
         :param chart:

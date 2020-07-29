@@ -49,6 +49,9 @@ class MarkClassifier:
 
         all_predictions = []
         for block_charts in chunks(charts, 100):
+            #print('joaooooooooooooooooooo', [type(chart.filename) for chart in block_charts])
+
+             
             inputs = [caffe.io.load_image(chart.filename) for chart in block_charts]
 
             predictions = self._net.predict(inputs, True)

@@ -14,6 +14,9 @@ Options:
 Example:
   python scripts/rate_mark_type_classifier.py revision models/mark_classifier/revision/test.txt
 """
+import sys
+sys.path.append(".")
+
 from docopt import docopt
 import numpy as np
 
@@ -26,9 +29,9 @@ import rev.utils as u
 def report_accuracy(y_true, y_pred, labels):
     cm = confusion_matrix(y_true, y_pred, labels)
 
-    print 'accuracy: ', accuracy_score(y_true, y_pred)
+    print('accuracy: ', accuracy_score(y_true, y_pred))
     u.print_cm(cm, labels=labels)
-    print classification_report(y_true, y_pred, target_names=labels)
+    print(classification_report(y_true, y_pred, target_names=labels))
 
 
 def main():
@@ -41,7 +44,8 @@ def main():
     # loading testing data
     test_data = np.genfromtxt(test_file, dtype=None)
     # test_data = test_data[0:100]
-    test_charts = [rev.Chart(item[0]) for item in test_data]
+
+    test_charts = [rev.Chart(item[0].decode('UTF-8')) for item in test_data]
     true_types = [mark_clf.categories[item[1]] for item in test_data]
 
     # classifying and evaluating

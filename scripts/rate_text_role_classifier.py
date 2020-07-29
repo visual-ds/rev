@@ -16,6 +16,10 @@ Examples:
   python scripts/rate_text_role_classifier.py features data/features_quarts.csv
   python scripts/rate_text_role_classifier.py features data/features_vega.csv
 """
+
+import sys
+sys.path.append(".")
+
 from docopt import docopt
 import pandas as pd
 import numpy as np

@@ -18,6 +18,10 @@ Examples:
   python scripts/run_feature_extraction.py single examples/vega1.png out.csv
   python scripts/run_feature_extraction.py multiple data/academic.txt out.csv
 """
+
+import sys
+sys.path.append(".")
+
 from docopt import docopt
 import pandas as pd
 

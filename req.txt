@@ -1,0 +1,31 @@
+conda install -c anaconda jupyter
+conda install -c conda-forge jupyterlab
+conda install -c anaconda opencv
+conda install -c anaconda joblib
+conda install -c anaconda scikit-learn=0.19.2
+conda install -c conda-forge colormath
+conda install shapely
+conda install -c conda-forge tesserocr
+conda install tensorflow=1.14
+pip install tf-slim
+conda install scikit-image
+conda install -c conda-forge caffe
+
+
+
+#
+/caffe/io.py
+line 296:
+img = skimage.img_as_float(skimage.io.imread(filename, as_grey=not color)).astype(np.float32)
+change by:
+img = skimage.img_as_float(skimage.io.imread(filename, as_gray=not color)).astype(np.float32)
+
+/caffe/classifier.py
+line 95:
+predictions = predictions.reshape((len(predictions) / 10, 10, -1))
+change by:
+predictions = predictions.reshape((len(predictions) // 10, 10, -1))
+
+
+
+conda env create -f env.yml

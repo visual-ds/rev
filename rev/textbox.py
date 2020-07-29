@@ -1,6 +1,7 @@
 import numpy as np
 from collections import OrderedDict
-from cv2 import cv2
+#from cv2 import cv2
+import cv2
 from .text import rectutils as ru
 
 
@@ -20,7 +21,7 @@ class TextBox(object):
         self._number = None
 
     def __str__(self):
-        return 'bbox[{4}]: [{0} {1} {2} {3}] : [{5}] : [{6}]'\
+        return 'bbox[{4}]: [{0:.1f} {1:.1f} {2:.1f} {3:.1f}] : [{5}] : [{6}]'\
             .format(self.x, self.y, self.w, self.h, self._id, self._type, self._text)
 
     __repr__ = __str__
@@ -44,9 +45,14 @@ class TextBox(object):
         nh = min(self.y + self.h + pady, fh) - ny
         self._rect = (nx, ny, nw, nh)
 
+    
     @property
     def type(self):
         return self._type
+
+    @type.setter
+    def type(self, value):
+        self._type = value
 
     @property
     def text(self):

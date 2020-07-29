@@ -1,6 +1,10 @@
 import os
+import json
 
 CWD = os.path.dirname(os.path.abspath(__file__))
+
+with open(os.path.join(CWD,'..','..','config.json')) as f:
+  config = json.load(f)
 
 
 def predict_mask(chart):
@@ -9,7 +13,8 @@ def predict_mask(chart):
     mask_path =  os.path.join(CWD,'..', '..', chart.filename.replace('.png', chart._prefix + '-mask'))
     img_path =  os.path.join(CWD, '..', '..', chart.filename)
     text_detection_model_path = os.path.join(CWD, '..', '..', 'models', 'darknet_text_detection')
-    darknet_lib_path = '/home/joao/Documents/repos/darknet/./darknet'
+    #darknet_lib_path = '/home/joao/Documents/repos/darknet/./darknet'
+    darknet_lib_path = config['darknet_lib_path']
 
     # Darknet text-detection command line
     command_line = '"{darknet_lib}" writing test "{config}" "{model}" "{img}" "{mask}"'.format(

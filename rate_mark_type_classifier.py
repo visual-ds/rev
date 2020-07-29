@@ -26,9 +26,9 @@ import rev.utils as u
 def report_accuracy(y_true, y_pred, labels):
     cm = confusion_matrix(y_true, y_pred, labels)
 
-    print 'accuracy: ', accuracy_score(y_true, y_pred)
+    print('accuracy: ', accuracy_score(y_true, y_pred))
     u.print_cm(cm, labels=labels)
-    print classification_report(y_true, y_pred, target_names=labels)
+    print(classification_report(y_true, y_pred, target_names=labels))
 
 
 def main():
