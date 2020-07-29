@@ -7,84 +7,283 @@ Our pipeline consist of the following steps:
 * Text localization and recognition
 * Text role classification 
 * Mark type classification 
-* Specification induction
+* Specification generation
 
 ## Installation
 You first need to download our code:  
 ```sh
-git clone git@github.com:uwdata/rev.git
+git clone git@github.com:visual-ds/rev.git
 ```
 
-Then, download the data and modes are in the following 
-[link](https://drive.google.com/open?id=1Bg9hyxlt2szXj6CBWIIt3yInIjKEqPFx).
+Then, download the data and models are in the following 
+[link](https://drive.google.com/drive/folders/1x_Um1uAT1rUfoiBHXOFXDH-CDJ2xNS5V?usp=sharing).
 You have to unzip the files in the project folder. 
 
 
 ### Dependencies
-* conda create -n rev python=2.7 opencv=3.4 pandas scikit-image scikit-learn 
-docopt joblib
-* caffe 1 (https://caffe.berkeleyvision.org/installation.html)
+* You can use any package manager to install the basic dependencies, we suggest creating an environment in conda:
+
+```sh 
+    conda env create -f env.yml
+```
+
+
+* Darknet
+    
+    For text mask detection we use a modified version of Darknet, available in our fork ([visual-ds/darknet](https://github.com/visual-ds/darknet))
+    - First, you have to clone the repository and make command:
+  
+        ```sh
+            git clone git@github.com:visual-ds/darknet.git
+            cd darknet
+            make
+        ```
+        
+    - Then, set the path to the darknet executable in the `config.json` file:
+    
+        ```js
+            "darknet_lib_path": "[replace_with_your_darknet_folder_path]./darknet"
+        ```
+  
+
 
 ## Using our API
-In this example we assume that we have the text elements from a chart. For a given image (`image.png`), text elements should be provided in a CSV file named `image-texts.csv` with the following format. 
+
+### Basic Chart usage
+
+Our API works with objects of the class `Chart`. A chart is composed of an image ( visualization) and the text elements (texts, text boxes, and text roles).
+
+
+In this example, we use the image `examples/image.png` and a CSV file that contains the information of the text elements `examples/image-texts.csv` with the following format:
 
 ```CSV
 id,x,y,width,height,text,type
 1,30,5,19,17,"45",y-axis-label
 ...
 ```
-Check file `examples/vega1-texts.csv` for an example.
 
-Text `type` can be: `title`, `x-axis-title`, `x-axis-label`, `y-axis-title`, 
-`y-axis-label`, `legend-title`, `legend-label`, and `text-label`.
+````Python
 
-However, in most cases we do not have access to the text elements, then, we can infer them using our pipeline. Each step of our pipeline can be run independently.  
+from rev.chart import Chart
+chart = Chart('examples/image.png', text_from=0)
+
+````
+
+The parameter `text_from` means:
+- **0**: read information from ground truth data: **'{image_name}-texts.csv'**
+- **1**: read information from ground truth boxes and output of text role classification and output of OCR: **'{image_name}-pred1-texts.csv'**
+- **2**: read information from output of text localization and output of text role classification, and output of OCR. : **'{image_name}-pred2-texts.csv'**
+
+> In some cases, it is possible we do not have access to the information of the text elements, so we can infer them using our pipeline.
+Also, we can write the information files using the methods of the `Chart` class:
+````Python
+    # Create a new chart
+    chart = Chart('examples/image.png', text_from=2)
+    
+    # Infer the text boxes information
+    inferred_text_boxes = ... #(we will explain each step of the pipeline further)
+    
+    # Set the inferred text boxes to the chart
+    chart.text_boxes = inferred_text_boxes
+    
+    # Save the file with the information
+    chart.save_text_boxes()
+````
+
+> In this example, the `text_from=2` parameter indicates that even though the `examples/image-pred2-texts.csv` file does not yet exist, all the information will be saved in a new file with that name.
+
+### Text localization and recognition
+
+For text localization and recognition we must first create an object of the class `TextLocalizer`
+````Python
+from rev.text.localizer import TextLocalizer
+localizer = TextLocalizer(method='default')
+````
+
+When we instantiate an object of the `TextLocalizer` class, it is possible to choose the method we will use with the `method` parameter, which allows us to choose between two methods: 
+
+- **default**: uses the same technique proposed in this paper.
+- **pixel_link**: uses the technique presented in en ['PixelLink: Detecting Scene Text via Instance Segmentation'](https://arxiv.org/abs/1801.01315).
+
+Then we use the `localize` method that receives a list of charts as input and returns the text boxes and text for each chart in the list.
+````Python
+all_text_boxes = localizer.localize([chart])
+````
+As in this example, we only use one chart, we will take the first element of the returned list, which contains the text boxes and texts of our chart.
+
+````Python
+chart_text_boxes = all_text_boxes[0]
+for text_box in chart_text_boxes:
+    print(text_box)
+````
+
+Finally, we create a copy of the original chart to which we assign the text boxes and save a new file with the calculated information (`examples/image-pred2-texts.csv`).
+
+````Python
+new_chart = chart.copy(text_from=2)
+new_chart.text_boxes = chart_text_boxes
+new_chart.save_text_boxes()
+````
+
+We also save an image where we can visualize the results at this stage of the pipeline (`examples/image-pred2-debug.png`).
+````Python
+new_chart.save_debug_image()
+````
+
+![chart example](examples/image-pred2-debug.png "Chart debug example")
+
+### Text role classification
+
+For the text role classification task, we need to instantiate an object of the `TextClassifier` class and use the `classify` method that receives as input a list of charts and returns the labels with the text roles for each chart.
+
+````Python
+from rev.text import TextClassifier
+
+text_clf = TextClassifier('default')
+all_text_type_preds = text_clf.classify([chart])
+
+text_type_preds = all_text_type_preds[0]
+
+for text_box, type_rol in zip(chart.text_boxes , text_type_preds):
+    print(text_box.text,':',type_rol)
+````
+
+#### Training a text role classifier
 
 
+It is possible to train our model to classify text roles. To achieve this, we need a CSV file containing the features for each textbox in the image and the type label (role) that we will use for the training. Check the file `data/features_all.csv` for an example.
 
-#### Text localization and recognition
-
-#### Text role classification
-```python
-import rev.text
-
-# feature extraction (single)
-text_features = rev.text.feature_extractor.from_chart(chart)
-print(text_features)
-
-# feature extraction (corpus)
-text_features = rev.text.feature_extractor.from_chart(chart)
-print(text_features)
-
-# text role classification
-text_clf = rev.text.TextClassifier('default')
-text_type_preds = text_clf.classify(chart)
-print(text_type_preds)
-
-# training text role classifier
+````Python
 import pandas as pd
 data = pd.read_csv('data/features_all.csv')
+data.head()
+````
+
+- First, we choose the features from our dataset that we will use in training, in this case, we provide the list with the features used in the paper: `rev.text.classifier.VALID_COLUMNS`.
+
+- Then we take the `type` column as the text role labels to be used in training.
+
+````Python
+import rev.text
 features = data[rev.text.classifier.VALID_COLUMNS]
 types = data['type']
+````
 
-text_clf = rev.text.TextClassifier()
+- Finally, we created an instance of the `TextClassifier` class and used the `train` method that receives as parameters the features and labels that will be used in training.
+
+````Python
+text_clf = TextClassifier()
 text_clf.train(features, types)
-text_clf.save_model('out.pkl')
-```
+````
 
-#### Mark type classification
-```python
-import rev.mark
-mark_clf = rev.mark.MarkClassifier()
-print mark_clf.classify([chart])
-```
+#### Feature extraction
 
-#### Specification induction
+We provide the `feature_extractor.from_chart` function for extracting features from a chart, and you can build your feature file for training from new charts.
 
+````Python
+from rev.text import feature_extractor
+text_features = feature_extractor.from_chart(chart)
+````
+
+### Mark type classifier
+
+The `MarkClassifier` class is used to classify the type of mark on the chart. Currently, our API has two different trained models.
+
+- **charts5cats**
+    
+    There are five categories to classify: 
+    - area 
+    - bar
+    - line
+    - plotting_symbol
+    - undefined.
+    
+    
+- **revision**
+    
+    There are ten categories to classify, the same ones presented in the paper [ReVision: Automated Classification, Analysis and Redesign of Chart Images](http://vis.stanford.edu/papers/revision): 
+    - AreaGraph
+    - BarGraph
+    - LineGraph
+    - Map 
+    - ParetoChart 
+    - PieChart 
+    - RadarPlot 
+    - ScatterGraph
+    - Table 
+    - VennDiagram
+
+The `classify` method also receives a list of charts and returns a list with the predicted marks for each chart.
+
+````Python
+from rev.mark import MarkClassifier
+
+mark_clf = MarkClassifier(model_name = 'charts5cats')
+print(mark_clf.classify([chart]))
+````
+
+### Specification generation
+
+The last step in our pipeline is the generation of the specification. The class `SpecGenerator` performs this task. To generate the specification (visual encoding) of a chart, it is only necessary to use the `generate` method that works with a list of charts and returns another list with the specifications for each chart.
+
+````Python
+from IPython.display import JSON
+from rev.spec.generator import SpecGenerator
+import json
+
+chart = Chart('examples/vega1.png', text_from=0)
+
+spec_gen = SpecGenerator()
+spec = spec_gen.generate([chart])
+JSON(spec[0], expanded=True)
+````
+
+### The complete pipeline
+
+Here is an example of how to use the API to generate the specification from a chart image from scratch and without any other information.
+
+````Python
+from IPython.display import JSON
+from rev.spec.generator import SpecGenerator
+import json
+
+from rev.chart import Chart
+from rev.text.localizer import TextLocalizer
+from rev.text import TextClassifier
+
+# Cargamos un chart
+chart = Chart('examples/image.png')
+
+# Text localization and recognition:
+localizer = TextLocalizer()
+
+# Asignamos la información de textboxes que calculamos
+text_boxes = localizer.localize([chart])
+chart.text_boxes = text_boxes[0]
+
+# Obtenemos los roles para cada textbox
+text_clf = TextClassifier('default')
+text_type_preds = text_clf.classify([chart])
+
+# Asignamos el rol a cada textbox del chart
+for (text_box, role) in zip(chart.text_boxes, text_type_preds[0]):
+    text_box.type = role
+
+# Generamos la especificación (este método internamente también obtiene el tipo marca del chart)
+spec_gen = SpecGenerator()
+spec = spec_gen.generate([chart])
+JSON(spec[0], expanded=True)
+````
 
 ## Scripts
 Some usefull script to reproduce results from paper: 
 ```shell
+
+# run text localization and recognition in multiple charts
+python scripts/run_box_predictor.py multiple /data/academic.txt
+python scripts/run_box_predictor.py multiple /data/quartz.txt
+python scripts/run_box_predictor.py multiple /data/vega.txt
+
 # code to rate the text-role classifier (Table 4 from paper)
 python scripts/rate_text_role_classifier.py features data/features_academic.csv
 python scripts/rate_text_role_classifier.py features data/features_quartz.csv
@@ -102,4 +301,3 @@ python scripts/run_text_role_classifier.py single examples/vega1.png
 # run text-role classifier in multiple charts
 python scripts/run_text_role_classifier.py multiple data/academic.txt
 ``` 
- 
