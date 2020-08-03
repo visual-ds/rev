@@ -112,6 +112,10 @@ class Chart(object):
     def save_text_boxes(self):
         save_texts(self.text_boxes, self.text_boxes_filename)
 
+    def get_text_boxes(self, text_from = 0):
+        fn = self._fn.replace('.png', prefixes[text_from] + '-texts.csv')
+        return load_texts(fn)
+
     def save_debug_image(self):
         #if not os.path.exists(self.predicted_debug_name):
         debug_image = u.draw_boxes(self.image, self.text_boxes)
