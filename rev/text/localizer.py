@@ -198,7 +198,7 @@ class TextLocalizer:
 # functions
 def apply_mask(bw, pred):
 
-    print(pred)
+    #print(pred)
 
     h, w = bw.shape
     pred = cv2.resize(pred, (w, h), interpolation=cv2.INTER_LINEAR)
@@ -310,12 +310,10 @@ def merge_characters(img, bw, boxes, scale,  debug = False):
     # lengths = np.array(rects)[:, 2:4].ravel()
     counts = np.bincount(lengths)
     common_height = np.argmax(counts)
-    print('most common character height is: ', common_height)
 
     weights = [mst[vi][vj]['weight'] for (vi, vj) in mst.edges()]
     counts = np.bincount(weights)
     common_length = np.argmax(counts)
-    print ('most common edge length is: ', common_length)
 
     # initial pass to ignore points
     #for n, nbrs in mst.adjacency_iter():
@@ -386,8 +384,8 @@ def merge_characters(img, bw, boxes, scale,  debug = False):
 
             b, b1, b2 = boxes[n], boxes[n1], boxes[n2]
             min_area = 16 * scale * scale
-            if abs(c[0]-212) < 1.0 and (c[1]-42) < 1.0:
-                print(c)
+            #if abs(c[0]-212) < 1.0 and (c[1]-42) < 1.0:
+                #print(c)
             a, a1, a2 = b.area(), b1.area(), b2.area()
             if angle < 120 and a > min_area and a1 > min_area and a2 > min_area:
                 # keep the closest

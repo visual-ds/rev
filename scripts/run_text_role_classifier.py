@@ -74,7 +74,7 @@ if __name__ == '__main__':
 
         chart = Chart(image_name, text_from=from_bbs)
         text_clf = rev.text.TextClassifier('default')
-        pred_types = text_clf.classify(chart, with_post, draw_debug, pad, save=True)
+        pred_types = text_clf.classify([chart], with_post, draw_debug, pad, save=True)
         print(pred_types)
 
     if args['multiple']:
@@ -87,7 +87,7 @@ if __name__ == '__main__':
         # run in parallel
         num_cores = multiprocessing.cpu_count()
         results = Parallel(n_jobs=num_cores, verbose=1, backend='multiprocessing')(
-            delayed(__classify)(text_clf, chart, with_post, draw_debug, pad, True)
+            delayed(__classify)(text_clf, [chart], with_post, draw_debug, pad, True)
             for chart in chart_dataset(chart_list, from_bbs))
 
         # print 'Total boxes : %d' % sum(results)

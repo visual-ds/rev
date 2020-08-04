@@ -68,5 +68,5 @@ if __name__ == '__main__':
         num_cores = multiprocessing.cpu_count()
 
         with parallel_backend('loky'):
-          results = Parallel(verbose=10, n_jobs=num_cores)(delayed(single)(chart) for chart in chart_dataset(chart_list))
+          results = Parallel(verbose=10, n_jobs=num_cores)(delayed(single)(chart) for chart in chart_dataset(chart_list, from_bbs=2))
 
