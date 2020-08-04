@@ -26,43 +26,31 @@ You have to unzip the files in the project folder.
 ```sh 
     conda env create -f env.yml
 ```
-> Nota: Si al invocar al método `classify` de la clase `MarkClassifier` 
-> 1. Obtienes el siguiente error:
->```sh
->    TypeError _open() got an unexpected keyword argument 'as_grey'
->  ```
->
->
-> Tienes que reemplazar la linea 296 del archivo `[your_library_path]/caffe/io.py` :
->````Python
->    img = skimage.img_as_float(skimage.io.imread(filename, as_grey=not color)).astype(np.float32)
->````
->
->
-> por:
->````Python
->    img = skimage.img_as_float(skimage.io.imread(filename, as_gray=not color)).astype(np.float32)
->````
->
->
->2. Si obtienes el siguiente error:
->```sh
+> Note: If when calling the `classify` method of the `MarkClassifier` class 
+>1. You get the following error:
+>    ```sh
+>      TypeError _open() got an unexpected keyword argument 'as_grey'
+>    ```
+> replace line 296 in the `[your_library_path]/caffe/io.py` file:
+>    ````Python
+>        img = skimage.img_as_float(skimage.io.imread(filename, as_grey=not color)).astype(np.float32)
+>    ````
+> by:
+>    ````Python
+>        img = skimage.img_as_float(skimage.io.imread(filename, as_gray=not color)).astype(np.float32)
+>    ````
+>2. You get the following error:
+>   ```sh
 >    TypeError: 'float' object cannot be interpreted as an integer
->  ```
->
->
-> Tienes que reemplazar la linea 95 del archivo `[your_library_path]//caffe/classifier.py` :
->
->
->````Python
->    predictions = predictions.reshape((len(predictions) / 10, 10, -1))
->````
->
->
->por:
->````Python
->    predictions = predictions.reshape((len(predictions) // 10, 10, -1))
->````
+>   ```
+> replace line 95 of the `[your_library_path]/caffe/classifier.py` file :
+>    ````Python
+>        predictions = predictions.reshape((len(predictions) / 10, 10, -1))
+>    ````
+>by:
+>    ````Python
+>        predictions = predictions.reshape((len(predictions) // 10, 10, -1))
+>    ````
 
 * Darknet
     
