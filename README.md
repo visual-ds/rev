@@ -28,29 +28,29 @@ You have to unzip the files in the project folder.
 ```
 > Note: If when calling the `classify` method of the `MarkClassifier` class 
 >1. You get the following error:
->    ```sh
->      TypeError _open() got an unexpected keyword argument 'as_grey'
->    ```
+>```sh
+> TypeError _open() got an unexpected keyword argument 'as_grey'
+>```
 > replace line 296 in the `[your_library_path]/caffe/io.py` file:
->    ````Python
->        img = skimage.img_as_float(skimage.io.imread(filename, as_grey=not color)).astype(np.float32)
->    ````
+>````Python
+>img = skimage.img_as_float(skimage.io.imread(filename, as_grey=not color)).astype(np.float32)
+>````
 > by:
->    ````Python
->        img = skimage.img_as_float(skimage.io.imread(filename, as_gray=not color)).astype(np.float32)
+> ````Python
+>img = skimage.img_as_float(skimage.io.imread(filename, as_gray=not color)).astype(np.float32)
 >    ````
 >2. You get the following error:
->   ```sh
->    TypeError: 'float' object cannot be interpreted as an integer
->   ```
+>```sh
+>TypeError: 'float' object cannot be interpreted as an integer
+>```
 > replace line 95 of the `[your_library_path]/caffe/classifier.py` file :
->    ````Python
->        predictions = predictions.reshape((len(predictions) / 10, 10, -1))
->    ````
+>````Python
+>predictions = predictions.reshape((len(predictions) / 10, 10, -1))
+>````
 >by:
->    ````Python
->        predictions = predictions.reshape((len(predictions) // 10, 10, -1))
->    ````
+>````Python
+>predictions = predictions.reshape((len(predictions) // 10, 10, -1))
+>````
 
 * Darknet
     
