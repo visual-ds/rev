@@ -83,7 +83,7 @@ def run_ocr_in_points_boxes(img, point_set, pad=0, psm=PSM.SINGLE_LINE, debug=Fa
                              fpad, cv2.BORDER_CONSTANT, value=(255, 255, 255))
     fh, fw, _ = img.shape
 
-    api = PyTessBaseAPI(psm=psm, lang='eng')
+    api = PyTessBaseAPI(psm=psm, lang='eng', path = "/usr/share/tesseract-ocr/4.00/tessdata/")
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(4, 4))
 
     boxes = []
@@ -104,24 +104,24 @@ def run_ocr_in_points_boxes(img, point_set, pad=0, psm=PSM.SINGLE_LINE, debug=Fa
         #u.show_image('ex', roi_bw)
 
         border_size = 3
-        roi_bw = cv2.copyMakeBorder(roi_bw, 
-                 border_size, 
-                 border_size, 
-                 border_size, 
-                 border_size, 
-                 cv2.BORDER_CONSTANT, 
+        roi_bw = cv2.copyMakeBorder(roi_bw,
+                 border_size,
+                 border_size,
+                 border_size,
+                 border_size,
+                 cv2.BORDER_CONSTANT,
                  value=255
         )
 
         #u.show_image('ex', roi_bw)
 
         pil_img = Image.fromarray(roi_bw)
-        
+
         max_conf = -np.inf
-        
+
         correct_text = ''
         correct_angle = 0
-        
+
         for angle in [0, -90, 90]:
             rot_img = pil_img.rotate(angle, expand=1)
             api.SetImage(rot_img)
@@ -215,7 +215,7 @@ def run_ocr_in_boxes(img, boxes, pad=0, psm=PSM.SINGLE_LINE, debug = False):
         for angle in [0, -90, 90]:
             rot_img = pil_img.rotate(angle, expand=1)
 
-            
+
 
             api.SetImage(rot_img)
             conf = api.MeanTextConf()

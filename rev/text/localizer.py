@@ -10,6 +10,7 @@ from .. textbox import TextBox
 from .. import utils as u
 from . import rectutils as ru
 from . import ocr
+from ..third_party.craft.craft import CRAFT
 
 from . pixel_link_text_detector import text_detect, PixelLinkDetector
 
@@ -105,7 +106,7 @@ class TextLocalizer:
                 show_image('original', vis2, 0, 900)
 
             lsboxes.append(boxes)
-        
+
         return lsboxes
 
     def pixel_link_localize(self, charts, debug=False):
@@ -126,13 +127,13 @@ class TextLocalizer:
                     cv2.polylines(img_temp,[pts],True,(0,0,255))
 
                     cv2.putText(img_temp, str(i), (bbox[0],bbox[1]), cv2.FONT_HERSHEY_SIMPLEX, 0.4, 255)
-                
+
                 show_image('pixel_link bboxes', img_temp)
 
-        
+
             points = [ e.reshape(-1,2) for e in np.array(points)]
 
-        
+
             # Apply OCR and filter by confidence and filter
             img = chart.image.copy()
 
@@ -146,7 +147,7 @@ class TextLocalizer:
                 boxes2.append(TextBox(i, xmin, ymin, xmax-xmin, ymax-ymin))
 
             #boxes = ocr.run_ocr_in_boxes(img, boxes2, pad=3, psm=8, debug=True) #8 for single word
-            
+
 
             if debug:
                 img_temp = chart.image.copy()
@@ -179,12 +180,15 @@ class TextLocalizer:
                 show_image('merged bboxes', vis)
 
             lsboxes.append(boxes)
-    
-        return lsboxes
-        
 
-    def localize(self, charts, debug=False):
+        return lsboxes
+
+    def craft_localize(charts, debug):
+
+        net = CRAFT() # initialize the model
         
+    def localize(self, charts, debug=False):
+
         if self._method == 'default':
             return self.default_localize(charts, 1.5, debug)
 
@@ -244,7 +248,7 @@ def show_image(name, image, x=0, y=0):
     imgplot = plt.imshow(image)
     plt.gcf().canvas.set_window_title(name)
     plt.show()
-    
+
     #new_name = '%s - %s - [%0.2f, %0.2f] - %s' % (name, image.shape, image.min(), image.max(), image.dtype.name)
     #image = image.astype(np.uint8)
     #cv2.imshow(new_name, image)
