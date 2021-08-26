@@ -4,13 +4,21 @@ import cv2
 import os
 import math
 import itertools
+import time
+
+import torch
+from torch.autograd import Variable
 
 from .. chart import Chart
 from .. textbox import TextBox
 from .. import utils as u
 from . import rectutils as ru
 from . import ocr
+
 from ..third_party.craft.craft import CRAFT
+from ..third_party.craft.file_utils import get_files, saveResult
+from ..third_party.craft import imgproc
+from ..third_party.craft import craft_utils
 
 from . pixel_link_text_detector import text_detect, PixelLinkDetector
 
@@ -23,16 +31,16 @@ from skimage.color import label2rgb
 
 import networkx as nx
 import numpy as np
+# import imgproc
 
 from numpy import random
-
 
 
 #temporal
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 
-
+from collections import OrderedDict
 
 class TextLocalizer:
     def __init__(self, method = 'default'):
@@ -183,10 +191,46 @@ class TextLocalizer:
 
         return lsboxes
 
-    def craft_localize(charts, debug):
+    def craft_localize(self, charts, debug = False,
+            model_checkpoint = None,
+            folder = "./images",
+            cuda = False):
 
         net = CRAFT() # initialize the model
-        
+
+        if not os.path.isdir(folder):
+            os.mkdir(folder)
+
+        trained_model = model_checkpoint or "../third_party/craft/weights/craft_mlt_25k.pth"
+
+        print("Loading model from " + trained_model)
+        # If cuda is available, use it; otherwise,
+        # we will do the computations on the cpu
+        if cuda:
+            net.load_state_dict(copyStateDict(torch.load(trained_model)))
+        else:
+            net.load_state_dict(copyStateDict(torch.load(trained_model, map_location = "cpu")))
+
+        if cuda:
+            net = net.cuda()
+            net = torch.nn.DataParallel(net)
+            cudnn.benchmark = False
+
+        for chart in charts:
+
+            image_path = chart.filename
+            image = imgproc.loadImage(image_path)
+
+            bboxes, polys, score_text = self._craft_test_net(net, image)
+
+            filename, file_ext = os.path.splitext(os.path.basename(image_path))
+            mask_file = folder + "/res_" + filename + "_mask.jpg"
+            cv2.imwrite(mask_file, score_text)
+
+            saveResult(image_path, image[:, :, ::-1], polys, dirname = folder + "/")
+
+            return bboxes
+
     def localize(self, charts, debug=False):
 
         if self._method == 'default':
@@ -197,7 +241,62 @@ class TextLocalizer:
         else:
             raise Exception('wrong "method" parameter, only supports: "default" or "pixel_link"')
 
+    def _craft_test_net(self, net, image, text_threshold = .7,
+                        link_threshold = .4, low_text = .4, poly = False,
+                        canvas_size = 1280, mag_ratio = 1.5, cuda = False):
 
+        ts = time.time()
+
+        # resize image
+        img_resized, target_ratio, size_heatmap = imgproc.resize_aspect_ratio(image,
+                                            canvas_size, interpolation=cv2.INTER_LINEAR,
+                                            mag_ratio = mag_ratio)
+
+        ratio_h = ratio_w = 1/target_ratio
+
+        # preprocess image
+        x = imgproc.normalizeMeanVariance(img_resized)
+        x = torch.from_numpy(x).permute(2, 0, 1) # [h, w, c] to [c, h, w]
+        x = Variable(x.unsqueeze(0)) # [c, h, w] to [b, c, h, w]
+
+        if cuda:
+            x = x.cuda()
+
+        # forward pass
+        with torch.no_grad():
+            y, feature = net(x)
+
+        # I should read the paper to write about what is actually
+        # happening here
+
+        # make score and link map
+        score_text = y[0,:,:,0].cpu().data.numpy()
+        score_link = y[0,:,:,1].cpu().data.numpy()
+
+        ts = time.time() - ts
+
+        tf = time.time()
+
+        # post process
+        boxes, polys = craft_utils.getDetBoxes(score_text, score_link,
+                                            text_threshold, link_threshold,
+                                            low_text)
+
+        # coordinate adjustment
+        boxes = craft_utils.adjustResultCoordinates(boxes, ratio_w, ratio_h)
+        polys = craft_utils.adjustResultCoordinates(polys, ratio_w, ratio_h)
+
+        for k in range(len(polys)):
+            if polys[k] is None: polys[k] = boxes[k]
+
+        tf = time.time() - tf
+
+        # render images
+        render_img = score_text.copy()
+        render_img = np.hstack((render_img, score_link))
+        ret_score_text = imgproc.cvt2HeatmapImg(render_img)
+
+        return boxes, polys, ret_score_text
 
 # functions
 def apply_mask(bw, pred):
@@ -424,6 +523,16 @@ def merge_characters(img, bw, boxes, scale,  debug = False):
 
     return boxes
 
+def copyStateDict(state_dict):
+    if list(state_dict.keys())[0].startswith("module"):
+        start_idx = 1
+    else:
+        start_idx = 0
+    new_state_dict = OrderedDict()
+    for k, v in state_dict.items():
+        name = ".".join(k.split(".")[start_idx:])
+        new_state_dict[name] = v
+    return new_state_dict
 
 def merge_words(img, boxes):
     graph = nx.empty_graph(len(boxes))
