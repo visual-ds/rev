@@ -43,13 +43,15 @@ import matplotlib.image as mpimg
 from collections import OrderedDict
 
 class TextLocalizer:
-    def __init__(self, method = 'default'):
+    def __init__(self, method = 'default', craft_model = None):
         self._method = method
 
         if self._method == 'pixel_link':
             self._pixel_link_detector = PixelLinkDetector()
             self._pixel_link_detector.init()
 
+        if self._method == "craft":
+            self._craft_model = craft_model
 
     def default_localize(self, charts, preproc_scale = 1.5, debug=False):
 
@@ -216,6 +218,8 @@ class TextLocalizer:
             net = torch.nn.DataParallel(net)
             cudnn.benchmark = False
 
+        lsboxes = []
+
         for chart in charts:
 
             image_path = chart.filename
@@ -229,7 +233,43 @@ class TextLocalizer:
 
             saveResult(image_path, image[:, :, ::-1], polys, dirname = folder + "/")
 
-            return bboxes
+            text_boxes = []
+
+            if debug:
+                image_debug = imgproc.loadImage(folder + "/res_" + filename + ".jpg")
+                u.show_image("image after craft-torch", image_debug)
+
+            # some boxes are completely white!
+            # for this, we can compute the
+            # variance of the pixels inside
+            # those box and, if it is numerically null,
+            # we can remove it
+            bboxes = self._craft_check_homogeneous_boxes(bboxes, image)
+
+            for i, box in enumerate(bboxes):
+                xmin = min(box, key = lambda item: item[0])[0]
+                xmax = max(box, key = lambda item: item[0])[0]
+                ymin = min(box, key = lambda item: item[1])[1]
+                ymax = max(box, key = lambda item: item[1])[1]
+                text_boxes.append(TextBox(i, xmin, ymin, xmax - xmin, ymax - ymin))
+
+            bboxes = ocr.run_ocr_in_boxes(image, text_boxes, pad = 3, psm = 8)
+
+            if debug:
+                image_debug = chart.image.copy()
+                image_debug = u.draw_boxes(image_debug, bboxes)
+                u.show_image("bboxes after ocr", image_debug)
+
+            bboxes = merge_words(image, bboxes)
+
+            if debug:
+                image_debug = chart.image.copy()
+                image_debug = u.draw_boxes(image_debug, bboxes)
+                u.show_image("bboxes after merging words", image_debug)
+
+            lsboxes.append(bboxes)
+
+        return lsboxes
 
     def localize(self, charts, debug=False):
 
@@ -238,8 +278,14 @@ class TextLocalizer:
 
         elif self._method == 'pixel_link':
             return self.pixel_link_localize(charts, debug)
+
+        elif self._method == "craft":
+            return self.craft_localize(charts,
+                                                model_checkpoint = self._craft_model,
+                                                debug = debug)
+
         else:
-            raise Exception('wrong "method" parameter, only supports: "default" or "pixel_link"')
+            raise Exception('wrong "method" parameter, only supports: "default", "pixel_link" or "craft"')
 
     def _craft_test_net(self, net, image, text_threshold = .7,
                         link_threshold = .4, low_text = .4, poly = False,
@@ -298,6 +344,18 @@ class TextLocalizer:
 
         return boxes, polys, ret_score_text
 
+    def _craft_check_homogeneous_boxes(self, boxes, image):
+
+        mask = np.zeros((image.shape), dtype = np.uint8)
+
+        cboxes = [] # boxes with actually something
+        white = (255, 255, 255)
+        for box in cboxes:
+            cv2.fillPoly(mask, box, white) 
+
+            colors = image[np.where((mask == white).all(axis = 2))]
+            print(colors)
+        return boxes
 # functions
 def apply_mask(bw, pred):
 
@@ -540,11 +598,10 @@ def merge_words(img, boxes):
         h1 = b1.h if b1._text_angle == 0 else b1.w
         for j, b2 in enumerate(boxes):
             h2 = b2.h if b2._text_angle == 0 else b2.w
-
             is_horizontal = b1._text_angle == 0 and b2._text_angle == 0
             same_angle = abs(b1._text_angle) == abs(b2._text_angle)
             same_height = ru.same_height(b1._rect, b2._rect, horiz=is_horizontal)
-            near = ru.next_on_same_line(b1._rect, b2._rect, dist=min(h1, h2), horiz=is_horizontal)
+            near = ru.next_on_same_line(b1._rect, b2._rect, dist=min(h1, h2)/float(2), horiz=is_horizontal)
 
             if i == j or (same_angle and same_height and near):
                 graph.add_edge(i, j)
