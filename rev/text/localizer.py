@@ -260,7 +260,7 @@ class TextLocalizer:
                 image_debug = u.draw_boxes(image_debug, bboxes)
                 u.show_image("bboxes after ocr", image_debug)
 
-            bboxes = merge_words(image, bboxes)
+            bboxes = merge_words(image, bboxes, method = "craft")
 
             if debug:
                 image_debug = chart.image.copy()
@@ -345,17 +345,28 @@ class TextLocalizer:
         return boxes, polys, ret_score_text
 
     def _craft_check_homogeneous_boxes(self, boxes, image):
-
-        mask = np.zeros((image.shape), dtype = np.uint8)
+        print(image.shape)
 
         cboxes = [] # boxes with actually something
         white = (255, 255, 255)
-        for box in cboxes:
-            cv2.fillPoly(mask, box, white) 
 
+        # in this loop, we check for boxes
+        # kind of homegeneous in color
+        for box in boxes:
+            mask = np.zeros(image.shape, dtype = np.uint8)
+            maskbox = np.array([box], dtype = np.int32)
+            cv2.fillPoly(mask, maskbox, white)
+            # mask = np.zeros(image.shape, dtype = np.uint8)
+
+            # u.show_image("A", mask)
             colors = image[np.where((mask == white).all(axis = 2))]
-            print(colors)
-        return boxes
+
+            if colors.var() > 19:
+                cboxes.append(box)
+            # print(colors.min(), colors.max(), colors.var())
+
+
+        return np.array(cboxes)
 # functions
 def apply_mask(bw, pred):
 
@@ -592,7 +603,7 @@ def copyStateDict(state_dict):
         new_state_dict[name] = v
     return new_state_dict
 
-def merge_words(img, boxes):
+def merge_words(img, boxes, method = "default"):
     graph = nx.empty_graph(len(boxes))
     for i, b1 in enumerate(boxes):
         h1 = b1.h if b1._text_angle == 0 else b1.w
@@ -601,7 +612,8 @@ def merge_words(img, boxes):
             is_horizontal = b1._text_angle == 0 and b2._text_angle == 0
             same_angle = abs(b1._text_angle) == abs(b2._text_angle)
             same_height = ru.same_height(b1._rect, b2._rect, horiz=is_horizontal)
-            near = ru.next_on_same_line(b1._rect, b2._rect, dist=min(h1, h2)/float(2), horiz=is_horizontal)
+            dist = min(h1, h2) if method == "default" else min(h1, h2)/float(5)
+            near = ru.next_on_same_line(b1._rect, b2._rect, dist=dist, horiz=is_horizontal)
 
             if i == j or (same_angle and same_height and near):
                 graph.add_edge(i, j)
