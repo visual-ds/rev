@@ -247,10 +247,11 @@ class TextLocalizer:
             bboxes = self._craft_check_homogeneous_boxes(bboxes, image)
 
             for i, box in enumerate(bboxes):
-                xmin = min(box, key = lambda item: item[0])[0]
-                xmax = max(box, key = lambda item: item[0])[0]
-                ymin = min(box, key = lambda item: item[1])[1]
-                ymax = max(box, key = lambda item: item[1])[1]
+                xmin, xmax , ymin, ymax = self._get_points_boundary(box)
+                # xmin = min(box, key = lambda item: item[0])[0]
+                # xmax = max(box, key = lambda item: item[0])[0]
+                # ymin = min(box, key = lambda item: item[1])[1]
+                # ymax = max(box, key = lambda item: item[1])[1]
                 text_boxes.append(TextBox(i, xmin, ymin, xmax - xmin, ymax - ymin))
 
             bboxes = ocr.run_ocr_in_boxes(image, text_boxes, pad = 3, psm = 8)
@@ -361,12 +362,94 @@ class TextLocalizer:
             # u.show_image("A", mask)
             colors = image[np.where((mask == white).all(axis = 2))]
 
-            if colors.var() > 19:
+            if not np.isclose(colors.var(), 0):
                 cboxes.append(box)
             # print(colors.min(), colors.max(), colors.var())
 
+        # now, we have boxes with this structure:
+        # ---------
+        # |Text   |
+        # ---------
+        # that is, the boxes aren't really tight
+        # to fix (to some extent) this, we need to
+        # search for an axis to tighten the box
+        # then, we will do a binary search
+        for i, box in enumerate(cboxes):
+            # we start searching for the right most
+            # boundary
+            box = self._right_search(box, image)
+            # then, we search for the left most
+            # boundary
+            box = self._left_search(box, image)
+
+            # update with (possibly) tight box
+            cboxes[i] = box
 
         return np.array(cboxes)
+
+    def _get_points_boundary(self, box):
+
+        xmin = min(box, key = lambda x: x[0])[0]
+        xmax = max(box, key = lambda x: x[0])[0]
+        ymin = min(box, key = lambda x: x[1])[1]
+        ymax = max(box, key = lambda x: x[1])[1]
+
+        return xmin, xmax, ymin, ymax
+
+    def _right_search(self, box, image, it = 1, maxit = 10):
+
+        if it >= maxit:
+            return box
+
+        xmin, xmax, ymin, ymax = self._get_points_boundary(box)
+        width = xmax - xmin
+
+        m = xmin + width/2
+        white = (255, 255, 255)
+
+        mask = np.zeros(image.shape, dtype = np.uint8)
+
+        # update box
+        rbox = np.where(box == xmin, m, box)
+        lbox = np.where(box == xmax, m, box)
+        maskbox = np.array([rbox], dtype = np.int32)
+        cv2.fillPoly(mask, maskbox, white)
+
+        colors = image[np.where((mask == white).all(axis = 2))]
+
+        if np.isclose(colors.var(), 0):
+            return self._right_search(lbox, image, it = it + 1)
+        else:
+            return box 
+
+    def _left_search(self, box, image, it = 1, maxit = 9):
+
+        if it >= maxit:
+            return box
+
+        xmin, xmax, ymin, ymax = self._get_points_boundary(box)
+        width = xmax - xmin
+
+        m = xmin + width/2
+        white = (255, 255, 255)
+
+        mask = np.zeros(image.shape, dtype = np.int32)
+
+        # lbox and rbox
+        rbox = np.where(box == xmin, m, box)
+        lbox = np.where(box == xmax, m, box)
+
+        maskbox = np.array([lbox], dtype = np.int32)
+        cv2.fillPoly(mask, maskbox, white)
+
+        colors = image[np.where((mask == white).all(axis = 2))]
+
+        if np.isclose(colors.var(), 0):
+            return self._left_search(rbox, image, it = it + 1)
+        else:
+            return box
+
+
 # functions
 def apply_mask(bw, pred):
 
