@@ -174,7 +174,7 @@ def is_number(s):
 
 def show_image(name, image, x=0, y=0):
     imgplot = plt.imshow(image)
-    plt.gcf().canvas.set_window_title(name)
+    plt.gcf().canvas.manager.set_window_title(name)
     plt.show()
 
 
@@ -210,13 +210,13 @@ def four_point_transform(image, pts, scale_factor=5):
     #cv2.polylines(img_temp, [pts], True, (0, 0, 255))
     #print(pts)
     #show_image('pts', img_temp)
-    
+
     #rect = order_points(pts)
     rect = pts.astype(np.float32)
 
     (tl, tr, br, bl) = rect
 
-    
+
     # compute the width of the new image, which will be the
     # maximum distance between bottom-right and bottom-left
     # x-coordiates or the top-right and top-left x-coordinates
