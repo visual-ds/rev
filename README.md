@@ -5,8 +5,8 @@ REV([paper](http://idl.cs.washington.edu/papers/reverse-engineering-vis/)) is a 
 Our pipeline consist of the following steps:
 
 * Text localization and recognition
-* Text role classification 
-* Mark type classification 
+* Text role classification
+* Mark type classification
 * Specification induction
 
 ## Installation
@@ -15,18 +15,18 @@ You first need to download our code:
 git clone git@github.com:visual-ds/rev.git
 ```
 
-Then, download the data and models are in the following 
+Then, download the data and models are in the following
 [link](https://drive.google.com/drive/folders/1lXpoi4lwUW3ZZCojq0bHnJTubSmStKhJ).
-You have to unzip the files in the project folder. 
+You have to unzip the files in the project folder.
 
 
 ### Dependencies
 * You can use any package manager to install the basic dependencies, we suggest creating an environment in conda:
 
-```sh 
+```sh
     conda env create -f env.yml
 ```
-> Note: If when calling the `classify` method of the `MarkClassifier` class 
+> Note: If when calling the `classify` method of the `MarkClassifier` class
 >1. You get the following error:
 >```sh
 > TypeError _open() got an unexpected keyword argument 'as_grey'
@@ -53,22 +53,22 @@ You have to unzip the files in the project folder.
 >````
 
 * Darknet
-    
+
     For text mask detection we use a modified version of Darknet, available in our fork ([visual-ds/darknet](https://github.com/visual-ds/darknet))
     - First, you have to clone the repository and make command:
-  
+
         ```sh
             git clone git@github.com:visual-ds/darknet.git
             cd darknet
             make
         ```
-        
+
     - Then, set the path to the darknet executable in the `config.json` file:
-    
+
         ```js
             "darknet_lib_path": "[replace_with_your_darknet_folder_path]./darknet"
         ```
-  
+
 
 
 ## Using our API
@@ -105,14 +105,14 @@ The parameter 'text_from' means:
     - '{image_name}-texts.csv'
     - '{image_name}-mask.png'
     - '{image_name}-debug.png'  
-    
-    
+
+
 - **1**: read text from 'pred1', i.e., ground truth boxes and output of text role classification and output of OCR:
     - '{image_name}-pred1-texts.csv'
     - '{image_name}-pred1-mask.png'
     - '{image_name}-pred1-debug.png'
-    
-    
+
+
 - **2**: read text from 'pred2', i.e., output of text localization and output of text role classification, and output of OCR:
     - '{image_name}-pred2-texts.csv'
     - '{image_name}-pred2-mask.png'
@@ -124,13 +124,13 @@ Also, we can write the information files using the methods of the `Chart` class:
 ````Python
     # Create a new chart
     chart = Chart('examples/image.png', text_from=2)
-    
+
     # Infer the text boxes information
     inferred_text_boxes = ... #(we will explain each step of the pipeline further)
-    
+
     # Set the inferred text boxes to the chart
     chart.text_boxes = inferred_text_boxes
-    
+
     # Save the file with the information
     chart.save_text_boxes()
 ````
@@ -148,10 +148,18 @@ from rev.text.localizer import TextLocalizer
 localizer = TextLocalizer(method='default')
 ```
 
-When we instantiate an object of the `TextLocalizer` class, it is possible to choose the method we will use with the `method` parameter, which allows us to choose between two methods: 
+When we instantiate an object of the `TextLocalizer` class, it is possible to choose the method we will use with the `method` parameter, which allows us to choose between three methods:
 
 - **default**: uses the same technique proposed in this paper.
 - **pixel_link**: uses the technique presented in en ['PixelLink: Detecting Scene Text via Instance Segmentation'](https://arxiv.org/abs/1801.01315).
+- **craft**: uses the technique presented in [CRAFT: Character-Region Awareness For Text detection](https://arxiv.org/abs/1904.01941).
+
+For CRAFT, in particular, we need to load the pretrained model; it is available, for instance, in its [repository](https://github.com/clovaai/CRAFT-pytorch). With the pth file in hand, use the `craft_model` argument on instantiation of `TextLocalizer` class. For instance,
+
+```python
+localizer = TextLocalizer(method = "craft",   
+  craft_model = "/path/to/model.pth")
+```
 
 Then we use the `localize` method that receives a list of charts as input and returns the text boxes and text for each chart in the list.
 
@@ -251,27 +259,27 @@ text_clf.train(features, types)
 The `MarkClassifier` class is used to classify the type of mark on the chart. Currently, our API has two different trained models.
 
 - **charts5cats**
-    
-    Model trained with the following five categories: 
-    - area 
+
+    Model trained with the following five categories:
+    - area
     - bar
     - line
     - plotting_symbol
     - undefined.
-    
-    
+
+
 - **revision**
-    
-    Model trained with the following ten categories, using the data presented in the paper [ReVision: Automated Classification, Analysis and Redesign of Chart Images](http://vis.stanford.edu/papers/revision): 
+
+    Model trained with the following ten categories, using the data presented in the paper [ReVision: Automated Classification, Analysis and Redesign of Chart Images](http://vis.stanford.edu/papers/revision):
     - AreaGraph
     - BarGraph
     - LineGraph
-    - Map 
-    - ParetoChart 
-    - PieChart 
-    - RadarPlot 
+    - Map
+    - ParetoChart
+    - PieChart
+    - RadarPlot
     - ScatterGraph
-    - Table 
+    - Table
     - VennDiagram
 
 The `classify` method also receives a list of charts and returns a list with the predicted marks for each chart.
@@ -340,7 +348,7 @@ JSON(spec[0], expanded=True)
 ```
 
 ## Scripts
-Some usefull script to reproduce results from paper: 
+Some usefull script to reproduce results from paper:
 ````shell
 # run text localization and recognition in multiple charts
 python scripts/run_box_predictor.py multiple ./data/academic.txt
@@ -370,6 +378,13 @@ python scripts/run_text_role_classifier.py single ./examples/vega1.png
 python scripts/run_text_role_classifier.py multiple ./data/academic.txt
 ````
 
+Also, we have a script for evaluating the text localization implementation of CRAFT, which was inserted in our pipeline. The next snippet illustrates how to use it.
+
+```sh
+python scripts/run_craft_box_predictor.py single examples/image.png --model=rev/third_party/craft/weights/craft_mlt_25k.pth
+```
+
+(check [CRAFT documentation](https://github.com/clovaai/CRAFT-pytorch) to get the pretrained model).
 
 ```python
 
