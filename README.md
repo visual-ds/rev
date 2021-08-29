@@ -154,7 +154,7 @@ When we instantiate an object of the `TextLocalizer` class, it is possible to ch
 - **pixel_link**: uses the technique presented in en ['PixelLink: Detecting Scene Text via Instance Segmentation'](https://arxiv.org/abs/1801.01315).
 - **craft**: uses the technique presented in [CRAFT: Character-Region Awareness For Text detection](https://arxiv.org/abs/1904.01941).
 
-For CRAFT, in particular, we need to load the pretrained model; it is available, for instance, in its [repository](https://github.com/clovaai/CRAFT-pytorch). With the pth file in hand, use the `craft_model` argument on instantiation of `TextLocalizer` class. For instance,
+For CRAFT, in particular, we need to load the pretrained model; it is available [here](https://drive.google.com/open?id=1Jk4eGD7crsqCCg9C9VjCLkMN3ze8kutZ). With the pth file in hand, use the `craft_model` argument on the instantiation of `TextLocalizer` class. For instance, 
 
 ```python
 localizer = TextLocalizer(method = "craft",   
