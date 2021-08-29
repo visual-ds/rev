@@ -42,7 +42,7 @@ import cv2
 from PIL import Image
 
 
-def single(chart, debug = False):
+def single(chart, debug = False): 
     localizer = TextLocalizer(method='default')
     chart.text_boxes = localizer.localize([chart], debug=debug)[0]
     chart.save_text_boxes()
@@ -69,4 +69,3 @@ if __name__ == '__main__':
 
         with parallel_backend('loky'):
           results = Parallel(verbose=10, n_jobs=num_cores)(delayed(single)(chart) for chart in chart_dataset(chart_list, from_bbs=2))
-
