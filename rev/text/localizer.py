@@ -695,7 +695,7 @@ def merge_words(img, boxes, method = "default"):
             is_horizontal = b1._text_angle == 0 and b2._text_angle == 0
             same_angle = abs(b1._text_angle) == abs(b2._text_angle)
             same_height = ru.same_height(b1._rect, b2._rect, horiz=is_horizontal)
-            dist = min(h1, h2) # if method == "default" else min(h1, h2)/float(9)
+            dist = min(h1, h2) if method == "default" else min(h1, h2)/float(5)
             near = ru.next_on_same_line(b1._rect, b2._rect, dist=dist, horiz=is_horizontal)
 
             if i == j or (same_angle and same_height and near):
