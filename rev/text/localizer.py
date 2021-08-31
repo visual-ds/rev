@@ -31,6 +31,7 @@ from skimage.color import label2rgb
 
 import networkx as nx
 import numpy as np
+from PIL import Image
 # import imgproc
 
 from numpy import random
@@ -227,6 +228,13 @@ class TextLocalizer:
 
             bboxes, polys, score_text = self._craft_test_net(net, image)
 
+            # also, some boxes are really large;
+            # specifically, when there is vertical text,
+            # then, we will try to apply the model with another
+            # parameters
+            bboxes, polys, score_text = self._craft_check_wide_boxes(bboxes, image,
+                net, polys, score_text, debug)
+
             filename, file_ext = os.path.splitext(os.path.basename(image_path))
             mask_file = folder + "/res_" + filename + "_mask.jpg"
             cv2.imwrite(mask_file, score_text)
@@ -245,7 +253,6 @@ class TextLocalizer:
             # those box and, if it is numerically null,
             # we can remove it
             bboxes = self._craft_check_homogeneous_boxes(bboxes, image)
-
             for i, box in enumerate(bboxes):
                 xmin, xmax , ymin, ymax = self._get_points_boundary(box)
                 # xmin = min(box, key = lambda item: item[0])[0]
@@ -386,6 +393,38 @@ class TextLocalizer:
             cboxes[i] = box
 
         return np.array(cboxes)
+
+    def _craft_check_wide_boxes(self, bboxes, image, net, polys, score_text, debug):
+
+        width, height, _ = image.shape
+
+        white = (255, 255, 255)
+
+        # nboxes = []
+
+        for box in bboxes:
+            xmin, xmax, ymin, ymax = self._get_points_boundary(box)
+            box_width = xmax - xmin
+            box_height = ymax - ymin
+
+            if box_width > width/2:
+                print("Wide box!")
+
+                xmin, xmax = int(xmin), int(xmax)
+                ymin, ymax = int(ymin), int(ymax)
+
+                image_region = image[ymin:ymax, xmin:xmax]
+
+                # print(self._craft_test_net(net, image_region))
+                if debug:
+                    u.show_image("wide box", image_region)
+
+                nboxes, polys, score_text = self._craft_test_net(net, image, link_threshold = .85,
+                    low_text = .5)
+
+                return nboxes, polys, score_text
+
+        return bboxes, polys, score_text
 
     def _get_points_boundary(self, box):
 
