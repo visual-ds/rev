@@ -15,10 +15,13 @@ from .. import utils as u
 from . import rectutils as ru
 from . import ocr
 
-from ..third_party.craft.craft import CRAFT
-from ..third_party.craft.file_utils import get_files, saveResult
-from ..third_party.craft import imgproc
-from ..third_party.craft import craft_utils
+import sys 
+sys.path.insert(1, os.path.join(sys.path[0], "..")) 
+
+from models.craft.craft import CRAFT
+from models.craft.file_utils import get_files, saveResult
+from models.craft import imgproc
+from models.craft import craft_utils
 
 from . pixel_link_text_detector import text_detect, PixelLinkDetector
 
@@ -204,7 +207,7 @@ class TextLocalizer:
         if not os.path.isdir(folder):
             os.mkdir(folder)
 
-        trained_model = model_checkpoint or "../third_party/craft/weights/craft_mlt_25k.pth"
+        trained_model = model_checkpoint or "../models/craft/weights/craft_mlt_25k.pth"
 
         print("Loading model from " + trained_model)
         # If cuda is available, use it; otherwise,
@@ -410,6 +413,9 @@ class TextLocalizer:
             if box_width > width/2:
                 print("Wide box!")
 
+                if debug:
+                    u.show_image("score_text", score_text) 
+
                 xmin, xmax = int(xmin), int(xmax)
                 ymin, ymax = int(ymin), int(ymax)
 
@@ -419,8 +425,8 @@ class TextLocalizer:
                 if debug:
                     u.show_image("wide box", image_region)
 
-                nboxes, polys, score_text = self._craft_test_net(net, image, link_threshold = .85,
-                    low_text = .5)
+                nboxes, polys, score_text = self._craft_test_net(net, image, link_threshold = .8,
+                    low_text = .5, mag_ratio = 2.5, text_threshold = .3)
 
                 return nboxes, polys, score_text
 
@@ -734,7 +740,7 @@ def merge_words(img, boxes, method = "default"):
             is_horizontal = b1._text_angle == 0 and b2._text_angle == 0
             same_angle = abs(b1._text_angle) == abs(b2._text_angle)
             same_height = ru.same_height(b1._rect, b2._rect, horiz=is_horizontal)
-            dist = min(h1, h2) if method == "default" else min(h1, h2)/float(5)
+            dist = min(h1, h2) if method == "default" else min(h1, h2)/float(2)
             near = ru.next_on_same_line(b1._rect, b2._rect, dist=dist, horiz=is_horizontal)
 
             if i == j or (same_angle and same_height and near):
