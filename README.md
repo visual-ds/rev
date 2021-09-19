@@ -19,6 +19,13 @@ Then, download the data and models are in the following
 [link](https://drive.google.com/drive/folders/1lXpoi4lwUW3ZZCojq0bHnJTubSmStKhJ).
 You have to unzip the files in the project folder.
 
+Alternatively, execute 
+
+```sh 
+ipython3 googledrive.ipy 
+``` 
+
+to download the pretrained models for CRAFT and deep text recognition. 
 
 ### Dependencies
 * You can use any package manager to install the basic dependencies, we suggest creating an environment in conda:
