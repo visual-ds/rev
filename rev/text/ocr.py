@@ -17,6 +17,22 @@ from . import rectutils as ru
 
 from ..textbox import TextBox
 
+# packages for deep text recognition
+import string
+import torch
+import torch.backends.cudnn as cudnn
+import torch.utils.data
+import torch.nn.functional as F
+
+import sys
+sys.path.insert(1, os.path.join(sys.path[0], ".."))
+
+from models.dlocr.utils import CTCLabelConverter, AttnLabelConverter
+from models.dlocr.dataset import RawDataset, AlignCollate
+from models.dlocr.model import Model
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 # temporal
 
 # from chartprocessor.chart import save_bbs
@@ -243,6 +259,76 @@ def run_ocr_in_boxes(img, boxes, pad=0, psm=PSM.SINGLE_LINE, debug = False):
     api.End()
 
     return boxes
+
+def deep_ocr(args):
+    if "CTC" in args.Prediction:
+        converter = CTCLabelConverter(args.character)
+    else:
+        converter = AttnLabelConverter(args.character)
+
+    args.num_class = len(converter.character)
+
+    if opt.rgb:
+        opt.input_channel = 3
+
+    model = Model(args)
+    print("Model input parameters", args.imgH, args.imgW, args.num_fiducial,
+    args.input_channel, args.output_channel, args.hidden_size, args.num_class,
+    args.batch_max_length, args.Transformation, args.FeatureExtraction,
+    args.SequenceModeling, args.Prediction)
+
+    model = torch.nn.DataParallel(model).to(device)
+
+    # load model
+    print("loading pretrained model from", args.saved_model)
+
+    model.load_state_dict(torch.load(args.saved_model, map_location = device))
+
+    # prepare data
+    align = AlignCollate(imgH = args.imgH, imgW = args.imgW, keep_ratio_with_pad = args.PAD)
+    data = RawDataset(root = args.image_folder, opt = opt)
+    loader = torch.nn.utils.data.DataLoader(
+        data, batch_size = args.batch_size,
+        suffle = False,
+        num_workers = int(args.workers),
+        collate_fn = align, pin_memory = True
+    )
+
+    # predict
+    model.eval()
+    with torch.no_grad():
+        for image_tensors, image_path_list in loader:
+            batch_size = image_tensors.size[0]
+            image = image_tensors.to(device)
+            length_for_pred = torch.IntTensor([args.batch_max_length] * batch_size).to(device)
+            text_for_pred = torch.LongTensor(batch_size, args.batch_max_length + 1).fill_(0).to(device)
+
+        if "CTC" in args.Prediction:
+            preds = model(image, text_for_pred)
+
+            # max probability
+            preds_size = torch.IntTensor([preds.size(1)] * batch_size)
+            _, preds_index = preds.max(2)
+            preds_str = converter.decode(preds_index, preds_size)
+        else:
+            preds = model(image, text_for_pred, is_train = False)
+            _, preds_index = preds.max(2)
+            preds_str = converter.decode(preds_index, length_for_pred)
+
+        log = str()
+        preds_prob = F.softmax(preds, dim = 2)
+        preds_max_prob, _ = preds_prob.max(dim = 2)
+        for img_name, pred, pred_max_prob in zip(image_path_list, preds_str, preds_max_prob):
+            if "Attn" in args.Prediction:
+                pred_EOS = pred.find("[s]")
+                pred = pred[:pred_EOS] # [s] is the end of sentence token
+                pred_max_prob = pred_max_prob[:pred_EOS]
+
+            confidence_score = pred_max_prob.cumprod(dim = 0)[-1]
+            log = log + f"{img_name:25s}\t{pred:25s}\t{confidence_score:.4f}"
+
+    return log
+
 
 
 # def run_ocr_in_chart(chart, from_bbs, pad=0):

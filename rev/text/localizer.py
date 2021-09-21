@@ -15,8 +15,8 @@ from .. import utils as u
 from . import rectutils as ru
 from . import ocr
 
-import sys 
-sys.path.insert(1, os.path.join(sys.path[0], "..")) 
+import sys
+sys.path.insert(1, os.path.join(sys.path[0], ".."))
 
 from models.craft.craft import CRAFT
 from models.craft.file_utils import get_files, saveResult
@@ -264,6 +264,28 @@ class TextLocalizer:
                 # ymax = max(box, key = lambda item: item[1])[1]
                 text_boxes.append(TextBox(i, xmin, ymin, xmax - xmin, ymax - ymin))
 
+            # we will save the text box images in
+            # a conveniently placed directory;
+            # we will, then, use this images for the ocr
+            if debug:
+                dest_dir = "imgboxes"
+                for i, box in enumerate(bboxes):
+                    xmin, xmax, ymin, ymax = self._get_points_boundary(box)
+                    xmin, xmax = int(xmin), int(xmax)
+                    ymin, ymax = int(ymin), int(ymax)
+
+                    image_region = image[ymin:ymax, xmin:xmax]
+
+
+                    if not os.path.exists(dest_dir):
+                        os.mkdir(dest_dir)
+
+                    img = Image.fromarray(image_region)
+                    img.save(dest_dir + "/box" + str(i) + ".jpeg")
+
+
+
+
             bboxes = ocr.run_ocr_in_boxes(image, text_boxes, pad = 3, psm = 8)
 
             if debug:
@@ -414,7 +436,7 @@ class TextLocalizer:
                 print("Wide box!")
 
                 if debug:
-                    u.show_image("score_text", score_text) 
+                    u.show_image("score_text", score_text)
 
                 xmin, xmax = int(xmin), int(xmax)
                 ymin, ymax = int(ymin), int(ymax)
