@@ -13,7 +13,7 @@ models = {
     },
     'charts5cats': {
         'path': 'models/mark_classifier/charts5cats/',
-        'model_file': 'deploymodel.prototxt',
+        'model_file': 'deploy.prototxt',
         'weights_file': 'model_iter_50000.caffemodel',
         'mean_file': 'ilsvrc_2012_mean.npy',
         'categories_file': 'categories.txt'
