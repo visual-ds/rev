@@ -5,6 +5,7 @@ import os
 import math
 import itertools
 import time
+import glob
 
 import torch
 from torch.autograd import Variable
@@ -46,9 +47,59 @@ import matplotlib.image as mpimg
 
 from collections import OrderedDict
 
+dlocr_opt_args = {
+    "workers": 4, # number of data loading workers
+    "batch_size": 192, # input batch size
+    "batch_max_length": 25, # maximum label length
+    "imgH": 32, # height of the input image
+    "imgW": 100, # width of the input image
+    "character": "0123456789abcdefghijklmnopqrstuvwxyz", # labels
+    # hyperparameters for model's architecture
+    "num_fiducial": 20, # number of fiducial points of TPS-STN
+    "input_channel": 1, # number of input channel of Feature Extractor
+    "output_channel": 512, # number of output channel of Feature Extractor
+    "hidden_size": 256, # size of the LSTM hidden state
+    "rgb": False, # use rgb input
+    "PAD": False, # whether to keep ratio when pad for image resize
+}
+
+dlocr_args = {
+    "image_folder": None, # path to text images
+    "saved_model": None, # path to model for evaluation
+    "Transformation": None, # None|TPS
+    "FeatureExtraction": None, # VGG|RCNN|ResNet
+    "SequenceModeling": None, # None|BiLSTM
+    "Prediction": None, # CTC|Attm,
+}
+
 class TextLocalizer:
-    def __init__(self, method = 'default', craft_model = None):
+    def __init__(self, method = 'default', craft_model = None,
+                                            ocr = "tesseract",
+                                            deep_ocr_params = dict()):
+        """
+        Class constructor for text localizer.
+
+        Parameters
+        --------------
+        method: str, optional
+            The method used for text localization; currently,
+            `default` and `craft` are supported.
+
+        craft_model: str, optional
+            If the chosen method is `craft`, this parameter
+            must take the path to the pretrained model.
+
+        ocr: str, optional
+            The method for optical character recogintion;
+            it can be `tesseract`, the default, or `deep_ocr`;
+            in the latter case, additional parameters are necessary.
+
+        deep_ocr_params: dict, optional
+            The parameters for using deep_ocr; the documentation
+            of this library lists them. :)
+        """
         self._method = method
+        self._ocr = ocr
 
         if self._method == 'pixel_link':
             self._pixel_link_detector = PixelLinkDetector()
@@ -56,6 +107,15 @@ class TextLocalizer:
 
         if self._method == "craft":
             self._craft_model = craft_model
+
+        if self._ocr == "deep_ocr":
+            for param, value in deep_ocr_params.items():
+                if param in dlocr_args.keys():
+                    dlocr_args[param] = value
+                elif param in dlocr_opt_args.keys():
+                    dlocr_opt_args[param] = value
+                else:
+                    raise KeyError(f"the param {param} isn't available")
 
     def default_localize(self, charts, preproc_scale = 1.5, debug=False):
 
@@ -269,6 +329,9 @@ class TextLocalizer:
             # we will, then, use this images for the ocr
             if debug:
                 dest_dir = "imgboxes"
+                files = glob.glob(dest_dir + "/*")
+                for file in files: os.remove(file)
+
                 for i, box in enumerate(bboxes):
                     xmin, xmax, ymin, ymax = self._get_points_boundary(box)
                     xmin, xmax = int(xmin), int(xmax)
@@ -285,8 +348,12 @@ class TextLocalizer:
 
 
 
+            # return ocr.deep_ocr(dlocr_args, dlocr_opt_args, text_boxes)
 
-            bboxes = ocr.run_ocr_in_boxes(image, text_boxes, pad = 3, psm = 8)
+            if self._ocr == "tesseract":
+                bboxes = ocr.run_ocr_in_boxes(image, text_boxes, pad = 3, psm = 8)
+            elif self._ocr == "deep_ocr":
+                bboxes = ocr.deep_ocr(dlocr_args, dlocr_opt_args, text_boxes) 
 
             if debug:
                 image_debug = chart.image.copy()
