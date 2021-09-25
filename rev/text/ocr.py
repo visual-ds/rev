@@ -46,7 +46,6 @@ from PIL import Image
 
 SHOW = False
 
-
 def post_process_text(text):
     # '1O99' -> '1099'
     # '4o' -> '40'
@@ -260,37 +259,41 @@ def run_ocr_in_boxes(img, boxes, pad=0, psm=PSM.SINGLE_LINE, debug = False):
 
     return boxes
 
-def deep_ocr(args):
-    if "CTC" in args.Prediction:
-        converter = CTCLabelConverter(args.character)
+def deep_ocr(args, opt, text_boxes):
+
+    if None in args.values():
+        raise KeyError(f"The parameters {list(args.keys())} should be given!")
+
+    args = {**args, **opt}
+
+    if "CTC" in args["Prediction"]:
+        converter = CTCLabelConverter(args["character"])
     else:
-        converter = AttnLabelConverter(args.character)
+        converter = AttnLabelConverter(args["character"])
 
-    args.num_class = len(converter.character)
+    args["num_class"] = len(converter.character)
 
-    if opt.rgb:
-        opt.input_channel = 3
+    if opt["rgb"]:
+        opt["input_channel"] = 3
 
     model = Model(args)
-    print("Model input parameters", args.imgH, args.imgW, args.num_fiducial,
-    args.input_channel, args.output_channel, args.hidden_size, args.num_class,
-    args.batch_max_length, args.Transformation, args.FeatureExtraction,
-    args.SequenceModeling, args.Prediction)
+
+    print("Model input parameters", args, opt)
 
     model = torch.nn.DataParallel(model).to(device)
 
     # load model
-    print("loading pretrained model from", args.saved_model)
+    print("loading pretrained model from", args["saved_model"])
 
-    model.load_state_dict(torch.load(args.saved_model, map_location = device))
+    model.load_state_dict(torch.load(args["saved_model"], map_location = device))
 
     # prepare data
-    align = AlignCollate(imgH = args.imgH, imgW = args.imgW, keep_ratio_with_pad = args.PAD)
-    data = RawDataset(root = args.image_folder, opt = opt)
-    loader = torch.nn.utils.data.DataLoader(
-        data, batch_size = args.batch_size,
-        suffle = False,
-        num_workers = int(args.workers),
+    align = AlignCollate(imgH = args["imgH"], imgW = args["imgW"], keep_ratio_with_pad = args["PAD"])
+    data = RawDataset(root = args["image_folder"], opt = args)
+    loader = torch.utils.data.DataLoader(
+        data, batch_size = args["batch_size"],
+        shuffle = False,
+        num_workers = int(args["workers"]),
         collate_fn = align, pin_memory = True
     )
 
@@ -298,12 +301,12 @@ def deep_ocr(args):
     model.eval()
     with torch.no_grad():
         for image_tensors, image_path_list in loader:
-            batch_size = image_tensors.size[0]
+            batch_size = image_tensors.size(0)
             image = image_tensors.to(device)
-            length_for_pred = torch.IntTensor([args.batch_max_length] * batch_size).to(device)
-            text_for_pred = torch.LongTensor(batch_size, args.batch_max_length + 1).fill_(0).to(device)
+            length_for_pred = torch.IntTensor([opt["batch_max_length"]] * batch_size).to(device)
+            text_for_pred = torch.LongTensor(batch_size, args["batch_max_length"] + 1).fill_(0).to(device)
 
-        if "CTC" in args.Prediction:
+        if "CTC" in args["Prediction"]:
             preds = model(image, text_for_pred)
 
             # max probability
@@ -318,16 +321,22 @@ def deep_ocr(args):
         log = str()
         preds_prob = F.softmax(preds, dim = 2)
         preds_max_prob, _ = preds_prob.max(dim = 2)
-        for img_name, pred, pred_max_prob in zip(image_path_list, preds_str, preds_max_prob):
-            if "Attn" in args.Prediction:
+        for box, img_name, pred, pred_max_prob in zip(text_boxes, image_path_list, preds_str, preds_max_prob):
+            if "Attn" in args["Prediction"]:
                 pred_EOS = pred.find("[s]")
                 pred = pred[:pred_EOS] # [s] is the end of sentence token
                 pred_max_prob = pred_max_prob[:pred_EOS]
 
             confidence_score = pred_max_prob.cumprod(dim = 0)[-1]
+
+            box._text = pred
+            box._text_conf = confidence_score
+            box._text_dist = 1e-9
+            box._text_angle = 0
+
             log = log + f"{img_name:25s}\t{pred:25s}\t{confidence_score:.4f}"
 
-    return log
+    return text_boxes 
 
 
 
