@@ -305,6 +305,7 @@ def deep_ocr(args, opt, text_boxes, chart_image):
             length_for_pred = torch.IntTensor([opt["batch_max_length"]] * batch_size).to(device)
             text_for_pred = torch.LongTensor(batch_size, args["batch_max_length"] + 1).fill_(0).to(device)
 
+        # u.show_image(image, "a")
         preds = model(image, text_for_pred, is_train = False)
         _, preds_index = preds.max(2)
         preds_str = converter.decode(preds_index, length_for_pred)
@@ -312,17 +313,39 @@ def deep_ocr(args, opt, text_boxes, chart_image):
         log = str()
         preds_prob = F.softmax(preds, dim = 2)
         preds_max_prob, _ = preds_prob.max(dim = 2)
-        for box, img_name, pred, pred_max_prob in zip(text_boxes, image_path_list, preds_str, preds_max_prob):
+
+        # boxes = dict()
+
+        for box in text_boxes:
+            box._text_conf = -np.inf
+
+        angles = data.angles
+
+        for img_name, pred, pred_max_prob in zip(image_path_list, preds_str, preds_max_prob):
             pred_EOS = pred.find("[s]")
             pred = pred[:pred_EOS] # [s] is the end of sentence token
             pred_max_prob = pred_max_prob[:pred_EOS]
+            # print(img_name)
+
+            box_idx, angle = list(map(int, img_name.split("|")))
+
+            box = text_boxes[box_idx]
 
             confidence_score = pred_max_prob.cumprod(dim = 0)[-1]
 
-            box._text = pred
-            box._text_conf = confidence_score
-            box._text_dist = 1e-9
-            box._text_angle = 0
+            # angle = angles[angle]
+
+            if confidence_score > box._text_conf:
+                box._text = pred
+                box._text_conf = confidence_score
+                box._text_dist = 1e-9
+                box._text_angle = angle
+                # print(box._text, box._text_conf)
+
+            # print(box._text, box._text_conf)
+            # print(pred, confidence_score)
+            # dashed = "~" * 99
+            # print(dashed)
 
             log = log + f"{img_name:25s}\t{pred:25s}\t{confidence_score:.4f}"
 
