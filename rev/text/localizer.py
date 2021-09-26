@@ -96,7 +96,7 @@ class TextLocalizer:
             it can be `tesseract`, the default, or `attn`;
             in the latter case, additional parameters are necessary.
 
-        deep_ocr_params: dict, optional
+        attn_params: dict, optional
             The parameters for using deep_ocr; the documentation
             of this library lists them. :)
         """
@@ -118,6 +118,12 @@ class TextLocalizer:
                     attn_opt_args[param] = value
                 else:
                     raise KeyError(f"the param {param} isn't available")
+
+        if self._ocr not in ["attn", "tesseract"]:
+            raise ValueError("ocr must be equal to `attn` or `tesseract`")
+
+        if self._ocr == "attn" and self._method == "default":
+            raise ValueError("use `attn` with `craft`; `default` method doesn't support `attn`")
 
     def default_localize(self, charts, preproc_scale = 1.5, debug=False):
 
@@ -152,19 +158,28 @@ class TextLocalizer:
             # merging characters
             boxes = merge_characters(img, bw_rec, boxes, preproc_scale, debug)
 
+            # if debug:
+            #     print(boxes)
+
             # Apply OCR and filter by confidence and filter
             if self._ocr == "tesseract":
                 boxes = ocr.run_ocr_in_boxes(img, boxes, pad=3, psm=8) #8 for single word
             elif self._ocr == "attn":
-                boxes = ocr.deep_ocr(attn_args, attn_opt_args, boxes, img)
+                boxes = ocr.deep_ocr(attn_args, attn_opt_args, boxes, chart.image)
 
-            min_conf = 25
+
+            if debug:
+                confs = [box._text_conf for box in boxes]
+                print("confidence", np.max(confs))
+
+            min_conf = 25 if self._ocr == "tesseract" else .25
             max_dist = 4
             boxes = [box for box in boxes if box._text_conf > min_conf and box._text_dist < max_dist]
-            min_conf = 40
+            min_conf = 40 if self._ocr == "tesseract" else .4
             boxes = [box for box in boxes if box._text_conf > min_conf]
 
             if debug:
+                print(boxes)
                 vis = u.draw_rects(cv2.cvtColor(bw_rec, cv2.COLOR_GRAY2BGR), boxes, color=(0, 0, 255), thickness=2)
                 show_image('after ocr conf', vis, 400, 600)
 
