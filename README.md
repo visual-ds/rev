@@ -19,14 +19,6 @@ Then, download the data and models are in the following
 [link](https://drive.google.com/drive/folders/1lXpoi4lwUW3ZZCojq0bHnJTubSmStKhJ).
 You have to unzip the files in the project folder.
 
-Alternatively, execute 
-
-```sh 
-ipython3 googledrive.ipy 
-``` 
-
-to download the pretrained models for CRAFT and deep text recognition. 
-
 ### Dependencies
 * You can use any package manager to install the basic dependencies, we suggest creating an environment in conda:
 
@@ -168,11 +160,17 @@ localizer = TextLocalizer(method = "craft",
   craft_model = "/path/to/model.pth")
 ```
 
-Then we use the `localize` method that receives a list of charts as input and returns the text boxes and text for each chart in the list.
+Also, we can choose, at this moment, the method for the text recognition: Tesseract or Attn. For Attn, in particular, we need additional (hyper)parameters; specifically, the path to the trained model, which is available (currently) at this [repository](https://github.com/clovaai/deep-text-recognition-benchmark), and other idiossyncratic aspects of the model, which are described in the documentation. 
 
+```python  
+localizer = TextLocalizer(ocr = "deep_ocr", 
+	deep_ocr_params = {"saved_model": "path/to/model"} 
+``` 
+
+Then we use the `localize` method that receives a list of charts as input and returns the text boxes and text for each chart in the list. 
 
 ```python
-all_text_boxes = localizer.localize([chart])
+all_text_boxes = localizer.localize([chart]) 
 ```
 
 As in this example, we only use one chart, we will take the first element of the returned list, which contains the text boxes and texts of our chart.
