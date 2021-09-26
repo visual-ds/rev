@@ -61,6 +61,7 @@ dlocr_opt_args = {
     "hidden_size": 256, # size of the LSTM hidden state
     "rgb": False, # use rgb input
     "PAD": False, # whether to keep ratio when pad for image resize
+    "sensitive": True 
 }
 
 dlocr_args = {

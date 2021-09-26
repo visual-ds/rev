@@ -264,6 +264,9 @@ def deep_ocr(args, opt, text_boxes, chart_image):
     if None in args.values():
         raise KeyError(f"The parameters {list(args.keys())} should be available!")
 
+    if opt["sensitive"]:
+        opt["character"] = string.printable[:-6]
+    
     args = {**args, **opt}
 
     converter = AttnLabelConverter(args["character"])
