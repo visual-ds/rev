@@ -6,6 +6,7 @@ import math
 import itertools
 import time
 import glob
+import gc
 
 import torch
 from torch.autograd import Variable
@@ -47,7 +48,7 @@ import matplotlib.image as mpimg
 
 from collections import OrderedDict
 
-dlocr_opt_args = {
+attn_opt_args = {
     "workers": 4, # number of data loading workers
     "batch_size": 192, # input batch size
     "batch_max_length": 25, # maximum label length
@@ -61,10 +62,10 @@ dlocr_opt_args = {
     "hidden_size": 256, # size of the LSTM hidden state
     "rgb": False, # use rgb input
     "PAD": False, # whether to keep ratio when pad for image resize
-    "sensitive": True 
+    "sensitive": True
 }
 
-dlocr_args = {
+attn_args = {
     "image_folder": "__temp_ocr__", # path to text images
     "saved_model": None, # path to model for evaluation
     "Transformation": "TPS", # None|TPS
@@ -76,7 +77,7 @@ dlocr_args = {
 class TextLocalizer:
     def __init__(self, method = 'default', craft_model = None,
                                             ocr = "tesseract",
-                                            deep_ocr_params = dict()):
+                                            attn_params = dict()):
         """
         Class constructor for text localizer.
 
@@ -92,7 +93,7 @@ class TextLocalizer:
 
         ocr: str, optional
             The method for optical character recogintion;
-            it can be `tesseract`, the default, or `deep_ocr`;
+            it can be `tesseract`, the default, or `attn`;
             in the latter case, additional parameters are necessary.
 
         deep_ocr_params: dict, optional
@@ -109,12 +110,12 @@ class TextLocalizer:
         if self._method == "craft":
             self._craft_model = craft_model
 
-        if self._ocr == "deep_ocr":
-            for param, value in deep_ocr_params.items():
-                if param in dlocr_args.keys():
-                    dlocr_args[param] = value
-                elif param in dlocr_opt_args.keys():
-                    dlocr_opt_args[param] = value
+        if self._ocr == "attn":
+            for param, value in attn_params.items():
+                if param in attn_args.keys():
+                    attn_args[param] = value
+                elif param in attn_opt_args.keys():
+                    attn_opt_args[param] = value
                 else:
                     raise KeyError(f"the param {param} isn't available")
 
@@ -152,7 +153,11 @@ class TextLocalizer:
             boxes = merge_characters(img, bw_rec, boxes, preproc_scale, debug)
 
             # Apply OCR and filter by confidence and filter
-            boxes = ocr.run_ocr_in_boxes(img, boxes, pad=3, psm=8) #8 for single word
+            if self._ocr == "tesseract":
+                boxes = ocr.run_ocr_in_boxes(img, boxes, pad=3, psm=8) #8 for single word
+            elif self._ocr == "attn":
+                boxes = ocr.deep_ocr(attn_args, attn_opt_args, boxes, img)
+
             min_conf = 25
             max_dist = 4
             boxes = [box for box in boxes if box._text_conf > min_conf and box._text_dist < max_dist]
@@ -353,8 +358,8 @@ class TextLocalizer:
 
             if self._ocr == "tesseract":
                 bboxes = ocr.run_ocr_in_boxes(image, text_boxes, pad = 3, psm = 8)
-            elif self._ocr == "deep_ocr":
-                bboxes = ocr.deep_ocr(dlocr_args, dlocr_opt_args, text_boxes, image)
+            elif self._ocr == "attn":
+                bboxes = ocr.deep_ocr(attn_args, attn_opt_args, text_boxes, image)
 
             if debug:
                 image_debug = chart.image.copy()
@@ -369,6 +374,12 @@ class TextLocalizer:
                 u.show_image("bboxes after merging words", image_debug)
 
             lsboxes.append(bboxes)
+
+            bboxes = None
+
+        if torch.cuda.is_available():
+            gc.collect()
+            torch.cuda.empty_cache()
 
         return lsboxes
 
@@ -588,8 +599,6 @@ class TextLocalizer:
 # functions
 def apply_mask(bw, pred):
 
-    #print(pred)
-
     h, w = bw.shape
     pred = cv2.resize(pred, (w, h), interpolation=cv2.INTER_LINEAR)
     _, mask = cv2.threshold(pred, 60, 255, cv2.THRESH_BINARY)
@@ -808,6 +817,9 @@ def merge_characters(img, bw, boxes, scale,  debug = False):
         vis = u.draw_rects(vis, boxes)
         show_image('mst_filtered', vis, 0, 600)
 
+    # if torch.cuda.is_available():
+    #     torch.cuda.empty_cache()
+    #
     return boxes
 
 def copyStateDict(state_dict):
