@@ -64,12 +64,12 @@ dlocr_opt_args = {
 }
 
 dlocr_args = {
-    "image_folder": None, # path to text images
+    "image_folder": "__temp_ocr__", # path to text images
     "saved_model": None, # path to model for evaluation
-    "Transformation": None, # None|TPS
-    "FeatureExtraction": None, # VGG|RCNN|ResNet
-    "SequenceModeling": None, # None|BiLSTM
-    "Prediction": None, # CTC|Attm,
+    "Transformation": "TPS", # None|TPS
+    "FeatureExtraction": "ResNet", # VGG|RCNN|ResNet
+    "SequenceModeling": "BiLSTM", # None|BiLSTM
+    "Prediction": "Attn", # CTC|Attm,
 }
 
 class TextLocalizer:
@@ -353,7 +353,7 @@ class TextLocalizer:
             if self._ocr == "tesseract":
                 bboxes = ocr.run_ocr_in_boxes(image, text_boxes, pad = 3, psm = 8)
             elif self._ocr == "deep_ocr":
-                bboxes = ocr.deep_ocr(dlocr_args, dlocr_opt_args, text_boxes) 
+                bboxes = ocr.deep_ocr(dlocr_args, dlocr_opt_args, text_boxes, image)
 
             if debug:
                 image_debug = chart.image.copy()

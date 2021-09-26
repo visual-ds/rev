@@ -63,7 +63,7 @@ class TextClassifier:
             self._clf = make_pipeline(StandardScaler(), my_svm)
         else:
             model_file = model_files[model_name]
-            
+
             #self._clf = pickle.load(model_file)
             with open(model_file, 'rb') as pickle_file:
                 self._clf = pickle.load(pickle_file)
@@ -106,12 +106,12 @@ class TextClassifier:
         u.print_cm(cm, labels=labels)
 
     def classify(self, charts, with_post=False, draw_debug=False, pad=0, save=False):
-        
+
         ls_pred_types = []
         for chart in charts:
             pred_types = self.classify_single(chart, with_post, draw_debug, pad, save)
             ls_pred_types.append(pred_types)
-        
+
         return ls_pred_types
 
     def classify_single(self, chart, with_post=False, draw_debug=False, pad=0, save=False):
@@ -163,6 +163,3 @@ class TextClassifier:
         with open(filename, 'wb') as pickle_file:
             pickle.dump(self._clf, pickle_file)
         #pickle.dump(self._clf, filename, 'wb')
-
-
-
