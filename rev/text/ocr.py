@@ -262,7 +262,7 @@ def run_ocr_in_boxes(img, boxes, pad=0, psm=PSM.SINGLE_LINE, debug = False):
 def deep_ocr(args, opt, text_boxes, chart_image):
 
     if None in args.values():
-        raise KeyError(f"The parameters {list(args.keys())} should be given!")
+        raise KeyError(f"The parameters {list(args.keys())} should be available!")
 
     args = {**args, **opt}
 
