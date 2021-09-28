@@ -173,8 +173,8 @@ class TextLocalizer:
                 boxes = ocr.deep_ocr(attn_args,
                         attn_opt_args,
                         boxes,
-                        chart.image,
-                        pad = 5)
+                        img,
+                        pad = 3)
                 boxes = [box for box in boxes if box._text != ""]
 
 
