@@ -1,6 +1,6 @@
 # Reverse-Engineering Visualizations (REV)
 
-REV([paper](http://idl.cs.washington.edu/papers/reverse-engineering-vis/)) is a text analysis pipeline which detects text elements in a chart, classifies their role (e.g., chart title, x-axis label, y-axis title, etc.), and recovers the text content using optical character recognition. It also uses a Convolutional Neural Network for mark type classification. Using the identified text elements and graphical mark type, it infers the encoding specification of an input chart image.
+REV ([paper](http://idl.cs.washington.edu/papers/reverse-engineering-vis/)) is a text analysis pipeline which detects text elements in a chart, classifies their role (e.g., chart title, x-axis label, y-axis title, etc.), and recovers the text content using optical character recognition. It also uses a Convolutional Neural Network for mark type classification. Using the identified text elements and graphical mark type, it infers the encoding specification of an input chart image.
 
 Our pipeline consist of the following steps:
 
@@ -15,8 +15,15 @@ You first need to download our code:
 git clone git@github.com:visual-ds/rev.git
 ```
 
+Then, execute 
+```sh 
+ipython setup.ipy 
+``` 
+to install the (Python) dependencies and darknet. 
+
 Then, download the data and models are in the following
 [link](https://drive.google.com/drive/folders/1lXpoi4lwUW3ZZCojq0bHnJTubSmStKhJ).
+*Update:* We are now using [OSF](osf.io); the data and the models, which still need to be unziped, are available in this [link](https://osf.io/wubdr/). 
 You have to unzip the files in the project folder.
 
 ### Dependencies
