@@ -122,8 +122,8 @@ class TextLocalizer:
         if self._ocr not in ["attn", "tesseract"]:
             raise ValueError("ocr must be equal to `attn` or `tesseract`")
 
-        if self._ocr == "attn" and self._method == "default":
-            raise ValueError("use `attn` with `craft`; `default` method doesn't support `attn`")
+        # if self._ocr == "attn" and self._method == "default":
+        #     raise ValueError("use `attn` with `craft`; `default` method doesn't support `attn`")
 
     def default_localize(self, charts, preproc_scale = 1.5, debug=False):
 
@@ -164,19 +164,23 @@ class TextLocalizer:
             # Apply OCR and filter by confidence and filter
             if self._ocr == "tesseract":
                 boxes = ocr.run_ocr_in_boxes(img, boxes, pad=3, psm=8) #8 for single word
+                min_conf = 25 if self._ocr == "tesseract" else .25
+                max_dist = 4
+                boxes = [box for box in boxes if box._text_conf > min_conf and box._text_dist < max_dist]
+                min_conf = 40 if self._ocr == "tesseract" else .4
+                boxes = [box for box in boxes if box._text_conf > min_conf]
             elif self._ocr == "attn":
-                boxes = ocr.deep_ocr(attn_args, attn_opt_args, boxes, chart.image)
+                boxes = ocr.deep_ocr(attn_args,
+                        attn_opt_args,
+                        boxes,
+                        chart.image,
+                        pad = 5)
+                boxes = [box for box in boxes if box._text != ""]
 
 
             if debug:
                 confs = [box._text_conf for box in boxes]
                 print("confidence", np.max(confs))
-
-            min_conf = 25 if self._ocr == "tesseract" else .25
-            max_dist = 4
-            boxes = [box for box in boxes if box._text_conf > min_conf and box._text_dist < max_dist]
-            min_conf = 40 if self._ocr == "tesseract" else .4
-            boxes = [box for box in boxes if box._text_conf > min_conf]
 
             if debug:
                 print(boxes)

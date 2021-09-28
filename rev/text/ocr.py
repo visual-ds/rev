@@ -259,14 +259,16 @@ def run_ocr_in_boxes(img, boxes, pad=0, psm=PSM.SINGLE_LINE, debug = False):
 
     return boxes
 
-def deep_ocr(args, opt, text_boxes, chart_image):
+def deep_ocr(args, opt, text_boxes, chart_image, pad = 0):
 
     if None in args.values():
         raise KeyError(f"The parameters {list(args.keys())} should be available!")
 
     if opt["sensitive"]:
         opt["character"] = string.printable[:-6]
-    
+
+    # u.show_image("ocar", chart_image)
+
     args = {**args, **opt}
 
     converter = AttnLabelConverter(args["character"])
@@ -290,7 +292,7 @@ def deep_ocr(args, opt, text_boxes, chart_image):
     # prepare data
     align = AlignCollate(imgH = args["imgH"], imgW = args["imgW"], keep_ratio_with_pad = args["PAD"])
     # data = RawDataset(root = args["image_folder"], opt = args)
-    data = TextBoxDataset(chart_image, text_boxes, args)
+    data = TextBoxDataset(chart_image, text_boxes, args, pad = pad)
     loader = torch.utils.data.DataLoader(
         data, batch_size = args["batch_size"],
         shuffle = False,
@@ -328,7 +330,7 @@ def deep_ocr(args, opt, text_boxes, chart_image):
             pred_EOS = pred.find("[s]")
             pred = pred[:pred_EOS] # [s] is the end of sentence token
             pred_max_prob = pred_max_prob[:pred_EOS]
-            # print(img_name)
+            # print(img_name, pred)
 
             box_idx, angle = list(map(int, img_name.split("|")))
 
@@ -351,7 +353,8 @@ def deep_ocr(args, opt, text_boxes, chart_image):
             # print(dashed)
 
             log = log + f"{img_name:25s}\t{pred:25s}\t{confidence_score:.4f}"
-
+    # print(log)
+    torch.cuda.empty_cache()
     return text_boxes
 
 
