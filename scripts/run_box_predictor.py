@@ -3,16 +3,18 @@
 Script to create label figures using actual bounding boxes
 
 Usage:
-  run_box_predictor.py single INPUT_PNG [--debug]
-  run_box_predictor.py multiple INPUT_LIST_TXT [--debug]
+  run_box_predictor.py single INPUT_PNG [--debug] [--craft] [--model=MODEL_NAME] 
+  run_box_predictor.py multiple INPUT_LIST_TXT [--debug] [--craft] [--model=MODEL_NAME]
   run_box_predictor.py (-h | --help)
   run_box_predictor.py --version
 
 Options:
-  -o OUTPUT   Output file.
-  --debug     Show debug image.
-  -h --help   Show this screen.
-  --version   Show version.
+  -o OUTPUT             Output file.
+  --debug               Show debug image.
+  -h --help             Show this screen.
+  --version             Show version.
+  --craft               Use CRAFT for text localization
+  --model=MODEL_NAME    Location of the (pretrained) model for CRAFT.
 """
 import os
 import sys
@@ -42,8 +44,12 @@ import cv2
 from PIL import Image
 
 
-def single(chart, debug = False): 
-    localizer = TextLocalizer(method='default')
+def single(chart, debug = False):
+    if args["--craft"]:
+        localizer = TextLocalizer(method = "craft",
+            craft_model = args["--model"])
+    else:
+        localizer = TextLocalizer(method='default')
     chart.text_boxes = localizer.localize([chart], debug=debug)[0]
     chart.save_text_boxes()
     chart.save_debug_image()

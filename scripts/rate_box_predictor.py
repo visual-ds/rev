@@ -40,6 +40,9 @@ DEBUG = False
 def rate_boxes_using_masks(chart, from_bbs, pad=0):
     fh, fw, _ = chart.image.shape
     truth_boxes = chart.text_boxes
+
+    u.show_image(chart.image)
+
     pred_boxes = chart.get_text_boxes(text_from = from_bbs)
 
     if pad > 0:
@@ -200,6 +203,13 @@ def main(args):
     if args['--debug']:
         num_cores = 1
 
+    # data = chart_dataset(chart_list)
+
+    if args["--debug"]:
+        for chart in data:
+            print(chart.image)
+
+
     if args['--mask']:
         # run in parallel
         results = Parallel(n_jobs=num_cores, verbose=1, backend='multiprocessing')(
@@ -237,9 +247,9 @@ def main(args):
 
 
 if __name__ == '__main__':
-    
+
     args = docopt(__doc__, version='1.0')
-    
+
 
     if args['--debug']:
         DEBUG = True
