@@ -15,7 +15,7 @@ You first need to download our code:
 git clone git@github.com:visual-ds/rev.git
 ```
 
-Then, execute 
+After this, execute (you must be inside `rev` folder; run `cd rev`) 
 ```sh 
 ipython setup.ipy 
 ``` 
@@ -23,7 +23,7 @@ to install the (Python) dependencies and darknet.
 
 Then, download the data and models are in the following
 [link](https://drive.google.com/drive/folders/1lXpoi4lwUW3ZZCojq0bHnJTubSmStKhJ).
-*Update:* We are now using [OSF](osf.io); the data and the models, which still need to be unziped, are available in this [link](https://osf.io/wubdr/). 
+**Update:** we are now using [OSF](osf.io); the data and the models, which still need to be unziped, are available in this [link](https://osf.io/wubdr/). 
 You have to unzip the files in the project folder.
 
 ### Dependencies
