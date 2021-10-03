@@ -1,5 +1,7 @@
 # Reverse-Engineering Visualizations (REV)
 
+[paper](http://idl.cs.washington.edu/papers/reverse-engineering-vis/)|[pretrained models](https://osf.io/wubdr/)|[darknet](https://github.com/visual-ds/darknet ) 
+
 REV ([paper](http://idl.cs.washington.edu/papers/reverse-engineering-vis/)) is a text analysis pipeline which detects text elements in a chart, classifies their role (e.g., chart title, x-axis label, y-axis title, etc.), and recovers the text content using optical character recognition. It also uses a Convolutional Neural Network for mark type classification. Using the identified text elements and graphical mark type, it infers the encoding specification of an input chart image.
 
 Our pipeline consist of the following steps:
