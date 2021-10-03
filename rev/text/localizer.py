@@ -20,10 +20,19 @@ from . import ocr
 import sys
 sys.path.insert(1, os.path.join(sys.path[0], ".."))
 
-from models.craft.craft import CRAFT
-from models.craft.file_utils import get_files, saveResult
-from models.craft import imgproc
-from models.craft import craft_utils
+from . craft_text_detector import (
+    CRAFT,
+    get_files,
+    saveResult,
+    imgproc,
+    # craft_utils,
+    getDetBoxes,
+    adjustResultCoordinates,
+    loadImage,
+    resize_aspect_ratio,
+    normalizeMeanVariance,
+    cvt2HeatmapImg 
+)
 
 from . pixel_link_text_detector import text_detect, PixelLinkDetector
 
@@ -312,7 +321,7 @@ class TextLocalizer:
         for chart in charts:
 
             image_path = chart.filename
-            image = imgproc.loadImage(image_path)
+            image = loadImage(image_path)
 
             bboxes, polys, score_text = self._craft_test_net(net, image)
 
@@ -332,7 +341,7 @@ class TextLocalizer:
             text_boxes = []
 
             if debug:
-                image_debug = imgproc.loadImage(folder + "/res_" + filename + ".jpg")
+                image_debug = loadImage(folder + "/res_" + filename + ".jpg")
                 u.show_image("image after craft-torch", image_debug)
 
             # some boxes are completely white!
@@ -425,14 +434,14 @@ class TextLocalizer:
         ts = time.time()
 
         # resize image
-        img_resized, target_ratio, size_heatmap = imgproc.resize_aspect_ratio(image,
+        img_resized, target_ratio, size_heatmap = resize_aspect_ratio(image,
                                             canvas_size, interpolation=cv2.INTER_LINEAR,
                                             mag_ratio = mag_ratio)
 
         ratio_h = ratio_w = 1/target_ratio
 
         # preprocess image
-        x = imgproc.normalizeMeanVariance(img_resized)
+        x = normalizeMeanVariance(img_resized)
         x = torch.from_numpy(x).permute(2, 0, 1) # [h, w, c] to [c, h, w]
         x = Variable(x.unsqueeze(0)) # [c, h, w] to [b, c, h, w]
 
@@ -455,13 +464,13 @@ class TextLocalizer:
         tf = time.time()
 
         # post process
-        boxes, polys = craft_utils.getDetBoxes(score_text, score_link,
+        boxes, polys = getDetBoxes(score_text, score_link,
                                             text_threshold, link_threshold,
                                             low_text)
 
         # coordinate adjustment
-        boxes = craft_utils.adjustResultCoordinates(boxes, ratio_w, ratio_h)
-        polys = craft_utils.adjustResultCoordinates(polys, ratio_w, ratio_h)
+        boxes = adjustResultCoordinates(boxes, ratio_w, ratio_h)
+        polys = adjustResultCoordinates(polys, ratio_w, ratio_h)
 
         for k in range(len(polys)):
             if polys[k] is None: polys[k] = boxes[k]
@@ -471,7 +480,7 @@ class TextLocalizer:
         # render images
         render_img = score_text.copy()
         render_img = np.hstack((render_img, score_link))
-        ret_score_text = imgproc.cvt2HeatmapImg(render_img)
+        ret_score_text = cvt2HeatmapImg(render_img)
 
         return boxes, polys, ret_score_text
 
