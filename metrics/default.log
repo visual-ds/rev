@@ -8,8 +8,8 @@ F1-Score : 0.83
 
 Quartz 
 -------------- 
-Dice     : 0.86
-Jaccard  : 0.76
-Precision: 0.76
+Dice     : 0.76
+Jaccard  : 0.62
+Precision: 0.62
 Recall   : 1.00
-F1-Score : 0.86
+F1-Score : 0.76
