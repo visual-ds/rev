@@ -27,9 +27,16 @@ import torch.nn.functional as F
 import sys
 sys.path.insert(1, os.path.join(sys.path[0], ".."))
 
-from models.dlocr.utils import AttnLabelConverter
-from models.dlocr.dataset import RawDataset, AlignCollate, TextBoxDataset
-from models.dlocr.model import Model
+from . attn_text_recognizer import (
+    AttnLabelConverter,
+    RawDataset,
+    AlignCollate,
+    TextBoxDataset,
+    Model
+)
+# from models.dlocr.utils import AttnLabelConverter
+# from models.dlocr.dataset import RawDataset, AlignCollate, TextBoxDataset
+# from models.dlocr.model import Model
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

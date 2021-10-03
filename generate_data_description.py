@@ -9,7 +9,7 @@ labels = ["predicted", "bbs", "mask", "debug"]
 def main(): 
     for cls in types: 
         print("Generating data for", cls, end = "\r", flush = True) 
-        description = open(cls + ".txt", "w") 
+        description = open(root + "/" + cls + ".txt", "w") 
         data_dir = root + "/" + cls 
 
         # for academic and quartz, the images 
@@ -22,7 +22,7 @@ def main():
                     is_raw = is_raw and (label not in img) 
 
                 if is_raw: 
-                    description.write(img + "\n") 
+                    description.write("./data/" + cls + "/" + img + "\n") 
         else: 
             folders = glob.glob(data_dir + "/*") 
             for folder in folders: 

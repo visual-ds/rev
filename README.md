@@ -15,15 +15,9 @@ You first need to download our code:
 git clone git@github.com:visual-ds/rev.git
 ```
 
-After this, execute (you must be inside `rev` folder; run `cd rev`) 
-```sh 
-ipython setup.ipy 
-``` 
-to install the (Python) dependencies and darknet. 
-
 Then, download the data and models are in the following
 [link](https://drive.google.com/drive/folders/1lXpoi4lwUW3ZZCojq0bHnJTubSmStKhJ).
-**Update:** we are now using [OSF](osf.io); the data and the models, which still need to be unziped, are available in this [link](https://osf.io/wubdr/). 
+*Update:* We are now using [OSF](osf.io); the data and the models, which still need to be unziped, are available in this [link](https://osf.io/wubdr/).
 You have to unzip the files in the project folder.
 
 ### Dependencies
@@ -160,24 +154,24 @@ When we instantiate an object of the `TextLocalizer` class, it is possible to ch
 - **pixel_link**: uses the technique presented in en ['PixelLink: Detecting Scene Text via Instance Segmentation'](https://arxiv.org/abs/1801.01315).
 - **craft**: uses the technique presented in [CRAFT: Character-Region Awareness For Text detection](https://arxiv.org/abs/1904.01941).
 
-For CRAFT, in particular, we need to load the pretrained model; it is available [here](https://drive.google.com/open?id=1Jk4eGD7crsqCCg9C9VjCLkMN3ze8kutZ). With the pth file in hand, use the `craft_model` argument on the instantiation of `TextLocalizer` class. For instance, 
+For CRAFT, in particular, we need to load the pretrained model; it is available [here](https://drive.google.com/open?id=1Jk4eGD7crsqCCg9C9VjCLkMN3ze8kutZ). With the pth file in hand, use the `craft_model` argument on the instantiation of `TextLocalizer` class. For instance,
 
 ```python
 localizer = TextLocalizer(method = "craft",   
   craft_model = "/path/to/model.pth")
 ```
 
-Also, we can choose, at this moment, the method for the text recognition: Tesseract or Attn. For Attn, in particular, we need additional (hyper)parameters; specifically, the path to the trained model, which is available (currently) at this [repository](https://github.com/clovaai/deep-text-recognition-benchmark), and other idiosyncratic aspects of the model, which are described in the documentation. The next snippet, then, represents its usage. 
+Also, we can choose, at this moment, the method for the text recognition: Tesseract or Attn. For Attn, in particular, we need additional (hyper)parameters; specifically, the path to the trained model, which is available (currently) at this [repository](https://github.com/clovaai/deep-text-recognition-benchmark), and other idiosyncratic aspects of the model, which are described in the documentation. The next snippet, then, represents its usage.
 
 ```python  
-localizer = TextLocalizer(ocr = "deep_ocr", 
-	deep_ocr_params = {"saved_model": "path/to/model"} 
-``` 
+localizer = TextLocalizer(ocr = "deep_ocr",
+	deep_ocr_params = {"saved_model": "path/to/model"}
+```
 
-Then we use the `localize` method that receives a list of charts as input and returns the text boxes and text for each chart in the list. 
+Then we use the `localize` method that receives a list of charts as input and returns the text boxes and text for each chart in the list.
 
 ```python
-all_text_boxes = localizer.localize([chart]) 
+all_text_boxes = localizer.localize([chart])
 ```
 
 As in this example, we only use one chart, we will take the first element of the returned list, which contains the text boxes and texts of our chart.
