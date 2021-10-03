@@ -17,5 +17,12 @@ with open("config.json", "w") as file:
 }}\n""".format(path = CWD + "/darknet") 
     file.write(config) 
 
+#pretrained models 
+print("Downloading models from https://osf.io/pa8uk/")  
+!wget https://osf.io/pa8uk/download -O models.zip 
+!unzip models.zip 
 
-
+# data 
+print("Downloading data from https://osf.io/uwtsv/") 
+!wget https://osf.io/uwtsv/download -O data.zip 
+!unzip data.zip 
