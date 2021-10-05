@@ -36,7 +36,7 @@ def main():
                         is_raw = is_raw and (label not in img) 
 
                     if is_raw: 
-                        description.write(folder[10:] + "/" + img + "\n") 
+                        description.write("./" + folder + "/" + img + "\n") 
 
 if __name__ == "__main__": 
     main() 
