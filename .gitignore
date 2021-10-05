@@ -9,9 +9,11 @@
 
 data/
 models/*
+images/* 
 
 data
 models
+images 
 
 revision
 darknet 
