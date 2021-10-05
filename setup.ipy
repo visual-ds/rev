@@ -18,8 +18,8 @@ with open("config.json", "w") as file:
     file.write(config) 
 
 #pretrained models 
-print("Downloading models from https://osf.io/pa8uk/")  
-!wget https://osf.io/pa8uk/download -O models.zip 
+print("Downloading models from https://osf.io/ckj5z/download")  
+!wget https://osf.io/ckj5z/download -O models.zip 
 !unzip models.zip 
 
 # data 
