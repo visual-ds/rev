@@ -77,7 +77,7 @@ class Chart(object):
     @property
     def text_boxes(self):
         if self._texts is None:
-            fn = self._fn.replace('.png', self._prefix + '-texts.csv')
+            fn = self._fn.replace('.png', self._prefix + '-pred2-pred2-texts.csv')
             self._texts = load_texts(fn)
 
         return self._texts
@@ -113,7 +113,7 @@ class Chart(object):
         save_texts(self.text_boxes, self.text_boxes_filename)
 
     def get_text_boxes(self, text_from = 0):
-        fn = self._fn.replace('.png', prefixes[text_from] + '-texts.csv')
+        fn = self._fn.replace('.png', prefixes[text_from] + '-pred2-texts.csv')
         return load_texts(fn)
 
     def save_debug_image(self):

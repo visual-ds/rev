@@ -18,7 +18,7 @@ from rev.text.localizer import TextLocalizer
 craft_model = "./models/craft/craft_mlt_25k.pth" 
 
 data = "data/" 
-types = ["academic", "quartz"]  
+types = ["academic", "quartz", "vega"]  
 
 def run_predictor(chart_list, root_dir): 
     for chart in chart_list: 

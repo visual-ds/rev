@@ -1,3 +1,3 @@
-{
-    "darknet_path_lib": "/home/tiago/stuff/rev/darknet/./darknet"
+{ 
+    "darknet_lib_path": "/home/tiago/stuff/rev/darknet/./darknet" 
 }

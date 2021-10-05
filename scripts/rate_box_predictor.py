@@ -41,7 +41,7 @@ def rate_boxes_using_masks(chart, from_bbs, pad=0):
     fh, fw, _ = chart.image.shape
     truth_boxes = chart.text_boxes
 
-    u.show_image(chart.image)
+    # u.show_image("chart", chart.image)
 
     pred_boxes = chart.get_text_boxes(text_from = from_bbs)
 

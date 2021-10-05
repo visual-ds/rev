@@ -10,10 +10,12 @@
 data/
 models/*
 images/* 
+imgboxes/* 
 
 data
 models
 images 
+imgboxes 
 
 revision
 darknet 
