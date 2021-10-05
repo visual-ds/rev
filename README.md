@@ -11,6 +11,16 @@ Our pipeline consist of the following steps:
 * Mark type classification
 * Specification induction
 
+## Setup 
+
+In a perfect world, the following line 
+
+```sh 
+ipython setup.ipy 
+``` 
+
+should prepare the computer for executing our pipeline (allowing, for instance, the execution of the cells in the notebook [Example.ipynb](https://github.com/visual-ds/rev/blob/craft/Example.ipynb)). Nevertheless, the world isn't perfect; so, we give more details in the next paragraphs.  
+
 ## Installation
 You first need to download our code:  
 ```sh
