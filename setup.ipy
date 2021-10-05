@@ -13,7 +13,7 @@ CWD = os.path.abspath(os.getcwd())
 
 with open("config.json", "w") as file: 
     config = """{{ 
-    "darknet_path_lib": {path}/./darknet 
+    "darknet_lib_path": "{path}/./darknet" 
 }}\n""".format(path = CWD + "/darknet") 
     file.write(config) 
 
