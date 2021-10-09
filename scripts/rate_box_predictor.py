@@ -213,7 +213,7 @@ def main(args):
     if args['--mask']:
         # run in parallel
         results = Parallel(n_jobs=num_cores, verbose=1, backend='multiprocessing')(
-            delayed(rate_boxes_using_masks)(chart, from_bbs, pad) for chart in chart_dataset(chart_list))
+            delayed(rate_boxes_using_masks)(chart, from_bbs, pad) for chart in chart_dataset(chart_list, 2))
 
         coeffs = np.asarray(results)
         print('Dice     : %0.2f' % coeffs[:, 0].mean())
@@ -221,7 +221,23 @@ def main(args):
         print('Precision: %0.2f' % coeffs[:, 2].mean())
         print('Recall   : %0.2f' % coeffs[:, 3].mean())
         print('F1-Score : %0.2f' % coeffs[:, 4].mean())
+        
+        dataset = chartlist[chartlist.index(".")] 
+        filename = datetime.today().strftime("%Y-%m-%d") 
+        filename = "metrics-" + filename + ".csv" 
+        
+        metrics = coeffs.mean(axis = 0) 
 
+        with open(filename, "w") as file: 
+            data = f""" 
+dataset,metric,method,value
+{dataset},dice,_,{metrics[0]}  
+{dataset},jaccard,_,{metrics[1]}
+{dataset},precision,_,{metrics[2]}
+{dataset},recall,_,{metrics[3]}
+{dataset},f1,_,{metrics[4]}
+""" 
+            file.write(data) 
 
     if args['--perfect']:
         # run in parallel
