@@ -215,7 +215,7 @@ def main(args):
     if args['--mask']:
         # run in parallel
         results = Parallel(n_jobs=num_cores, verbose=1, backend='multiprocessing')(
-            delayed(rate_boxes_using_masks)(chart, from_bbs, pad) for chart in chart_dataset(chart_list, from_bbs = from_bbs))
+            delayed(rate_boxes_using_masks)(chart, from_bbs, pad) for chart in chart_dataset(chart_list, from_bbs = 1))
 
         coeffs = np.asarray(results)
         print('Dice     : %0.2f' % coeffs[:, 0].mean())
