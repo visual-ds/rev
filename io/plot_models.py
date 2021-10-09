@@ -12,13 +12,14 @@ def plot_chart(tsv_name):
     print(data.columns) 
 
     chart = alt.Chart(data).mark_point(filled = True).encode(
-                x = alt.X("value "), 
-                y = alt.Y("metric"), 
+                x = alt.X("value"), 
+                y = alt.Y("metric", axis = alt.Axis(grid = True)), 
                 color = alt.Color("dataset"),  
                 shape = alt.Shape("method") 
             ) 
-
+    
+    chart.save("chart.png") 
     alv.show(chart) 
-
+    # chart.save("chart.png") 
 if __name__ == "__main__": 
-    plot_chart("metrics/metrics.tsv") 
+    plot_chart("metrics.tsv") 

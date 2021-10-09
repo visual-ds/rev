@@ -3,7 +3,7 @@
 Rate the predicted bounding boxes.
 
 Usage:
-    rate_box_predictor.py INPUT_LIST_TXT (--mask | --perfect | --overlap) [--from_bbs=FROM] [--pad=PAD] [--debug]
+    rate_box_predictor.py INPUT_LIST_TXT (--mask | --perfect | --overlap) [--from_bbs=FROM] [--pad=PAD] [--debug] [--method=METHOD]
     rate_box_predictor.py (-h | --help)
     rate_box_predictor.py --version
 
@@ -14,6 +14,7 @@ Options:
     --from_bbs FROM   1: from predicted1-bbs.csv
                       2: from predicted2-bbs.csv  [default: 1]
     --pad PAD         Add padding to boxes [default: 0]
+    --method METHOD   Method for text localization. 
     --debug           Show debug image.
     -h --help         Show this screen.
     --version         Show version.
@@ -231,14 +232,16 @@ def main(args):
         filename = "io/metrics-" + filename + ".csv" 
         
         metrics = coeffs.mean(axis = 0) 
+        
+        method = args["--method"] or "_" 
 
         with open(filename, "w") as file: 
             data = f"""dataset,metric,method,value
-{dataset},dice,_,{metrics[0]}  
-{dataset},jaccard,_,{metrics[1]}
-{dataset},precision,_,{metrics[2]}
-{dataset},recall,_,{metrics[3]}
-{dataset},f1,_,{metrics[4]}
+{dataset},dice,{method},{metrics[0]}  
+{dataset},jaccard,{method},{metrics[1]}
+{dataset},precision,{method},{metrics[2]}
+{dataset},recall,{method},{metrics[3]}
+{dataset},f1,{method},{metrics[4]}
 """ 
             file.write(data) 
 

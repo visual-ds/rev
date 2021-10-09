@@ -12,6 +12,7 @@ of the pngs.
 import os 
 import sys 
 import gc 
+import torch 
 
 from rev.chart import Chart 
 from rev.text.localizer import TextLocalizer 
@@ -21,13 +22,15 @@ craft_model = "./models/craft/craft_mlt_25k.pth"
 data = "data/" 
 types = ["academic", "quartz", "vega"]  
 
+cuda = torch.cuda.is_available() 
+
 def run_predictor(chart_list, root_dir): 
     for chart in chart_list: 
         print("Prediction for", chart.strip()) 
         localizer = TextLocalizer("craft", 
                 craft_model = craft_model) 
         chart = Chart(chart.strip(), text_from = 2) 
-        chart.text_boxes = localizer.localize([chart])[0] 
+        chart.text_boxes = localizer.localize([chart], cuda = cuda)[0] 
         chart.save_text_boxes() 
         chart.save_debug_image() 
         

@@ -1,6 +1,6 @@
 dataset,metric,method,value
-academic,dice,_,0.7994716724650182  
-academic,jaccard,_,0.6793674537476443
-academic,precision,_,0.7915810106488225
-academic,recall,_,0.8380900357142199
-academic,f1,_,0.7994716724650182
+quartz,dice,craft,0.6179184693202517  
+quartz,jaccard,craft,0.49471067771012295
+quartz,precision,craft,0.52611278357586
+quartz,recall,craft,0.9125425279730945
+quartz,f1,craft,0.6179184693202516
