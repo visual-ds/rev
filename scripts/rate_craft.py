@@ -11,6 +11,7 @@ of the pngs.
 
 import os 
 import sys 
+import gc 
 
 from rev.chart import Chart 
 from rev.text.localizer import TextLocalizer 
@@ -25,10 +26,12 @@ def run_predictor(chart_list, root_dir):
         print("Prediction for", chart.strip()) 
         localizer = TextLocalizer("craft", 
                 craft_model = craft_model) 
-        chart = Chart(chart.strip()) 
+        chart = Chart(chart.strip(), text_from = 2) 
         chart.text_boxes = localizer.localize([chart])[0] 
         chart.save_text_boxes() 
         chart.save_debug_image() 
+        
+        gc.collect() 
 
 if __name__ == "__main__": 
     args = sys.argv 
