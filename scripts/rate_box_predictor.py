@@ -228,7 +228,7 @@ def main(args):
         punct = chart_list.rindex(".") 
         dataset = chart_list[slash:punct]  
         filename = datetime.today().strftime("%Y-%m-%d") 
-        filename = "metrics/metrics-" + filename + ".csv" 
+        filename = "io/metrics-" + filename + ".csv" 
         
         metrics = coeffs.mean(axis = 0) 
 

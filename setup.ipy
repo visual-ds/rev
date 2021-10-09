@@ -1,0 +1,28 @@
+#!usr/bin/ipython 
+
+# install dependencies 
+!conda env create -f env.yml 
+
+# install darknet 
+!git clone https://github.com/visual-ds/darknet 
+!cd darknet && make 
+
+import os 
+
+CWD = os.path.abspath(os.getcwd()) 
+
+with open("config.json", "w") as file: 
+    config = """{{ 
+    "darknet_lib_path": "{path}/./darknet" 
+}}\n""".format(path = CWD + "/darknet") 
+    file.write(config) 
+
+#pretrained models 
+print("Downloading models from https://osf.io/ckj5z/download")  
+!wget https://osf.io/ckj5z/download -O models.zip 
+!unzip models.zip 
+
+# data 
+print("Downloading data from https://osf.io/uwtsv/") 
+!wget https://osf.io/uwtsv/download -O data.zip 
+!unzip data.zip 

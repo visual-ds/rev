@@ -11,7 +11,7 @@ import matplotlib.image as mpimg
 CWD = os.path.dirname(os.path.abspath(__file__))
 
 unicode_font = ImageFont.truetype(
-    os.path.join(CWD, '../fonts/Arial Unicode.ttf'), 12)
+    os.path.join(CWD, 'Arial Unicode.ttf'), 12)
 
 
 text_colors = {
