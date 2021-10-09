@@ -34,6 +34,8 @@ from rev.third_party.mwmatching import maxWeightMatching
 from joblib import Parallel, delayed
 import multiprocessing
 
+from datetime import datetime 
+
 DEBUG = False
 
 
@@ -213,7 +215,7 @@ def main(args):
     if args['--mask']:
         # run in parallel
         results = Parallel(n_jobs=num_cores, verbose=1, backend='multiprocessing')(
-            delayed(rate_boxes_using_masks)(chart, from_bbs, pad) for chart in chart_dataset(chart_list, 2))
+            delayed(rate_boxes_using_masks)(chart, from_bbs, pad) for chart in chart_dataset(chart_list, from_bbs = from_bbs))
 
         coeffs = np.asarray(results)
         print('Dice     : %0.2f' % coeffs[:, 0].mean())
@@ -222,15 +224,16 @@ def main(args):
         print('Recall   : %0.2f' % coeffs[:, 3].mean())
         print('F1-Score : %0.2f' % coeffs[:, 4].mean())
         
-        dataset = chartlist[chartlist.index(".")] 
+        slash = chart_list.rindex("/") + 1  
+        punct = chart_list.rindex(".") 
+        dataset = chart_list[slash:punct]  
         filename = datetime.today().strftime("%Y-%m-%d") 
-        filename = "metrics-" + filename + ".csv" 
+        filename = "metrics/metrics-" + filename + ".csv" 
         
         metrics = coeffs.mean(axis = 0) 
 
         with open(filename, "w") as file: 
-            data = f""" 
-dataset,metric,method,value
+            data = f"""dataset,metric,method,value
 {dataset},dice,_,{metrics[0]}  
 {dataset},jaccard,_,{metrics[1]}
 {dataset},precision,_,{metrics[2]}

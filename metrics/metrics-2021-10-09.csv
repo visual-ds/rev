@@ -1,0 +1,6 @@
+dataset,metric,method,value
+academic,dice,_,0.8329663444083609  
+academic,jaccard,_,0.7164196957752964
+academic,precision,_,0.7164196957752964
+academic,recall,_,1.0
+academic,f1,_,0.8329663444083609
