@@ -10,6 +10,7 @@ import gc
 
 import torch
 from torch.autograd import Variable
+from torch.backends import cudnn 
 
 from .. chart import Chart
 from .. textbox import TextBox
@@ -302,7 +303,7 @@ class TextLocalizer:
             os.mkdir(folder)
 
         trained_model = model_checkpoint or "../models/craft/weights/craft_mlt_25k.pth"
-
+        
         print("Loading model from " + trained_model)
         # If cuda is available, use it; otherwise,
         # we will do the computations on the cpu
@@ -323,7 +324,7 @@ class TextLocalizer:
             image_path = chart.filename
             image = loadImage(image_path)
 
-            bboxes, polys, score_text = self._craft_test_net(net, image)
+            bboxes, polys, score_text = self._craft_test_net(net, image, cuda = cuda)
 
             # also, some boxes are really large;
             # specifically, when there is vertical text,
@@ -411,7 +412,7 @@ class TextLocalizer:
 
         return lsboxes
 
-    def localize(self, charts, debug=False):
+    def localize(self, charts, debug=False, cuda = False):
 
         if self._method == 'default':
             return self.default_localize(charts, 1.5, debug)
@@ -422,7 +423,7 @@ class TextLocalizer:
         elif self._method == "craft":
             return self.craft_localize(charts,
                                                 model_checkpoint = self._craft_model,
-                                                debug = debug)
+                                                debug = debug, cuda = cuda)
 
         else:
             raise Exception('wrong "method" parameter, only supports: "default", "pixel_link" or "craft"')
