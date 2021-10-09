@@ -141,7 +141,13 @@ def create_mask(h, w, texts):
 
 
 def load_texts(fn):
-    df = pd.read_csv(fn)
+    try: 
+        df = pd.read_csv(fn)
+    except FileNotFoundError: 
+        print("Using pred1", flush = True, end = "\r") 
+        fn = fn.replace("texts", "pred1-texts") 
+        df = pd.read_csv(fn) 
+
     df.replace(np.nan, '', inplace=True)
 
     # force text column to be string
