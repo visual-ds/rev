@@ -15,7 +15,8 @@ def plot_chart(tsv_name):
                 x = alt.X("value"), 
                 y = alt.Y("metric", axis = alt.Axis(grid = True)), 
                 color = alt.Color("dataset"),  
-                shape = alt.Shape("method") 
+                shape = alt.Shape("method"), 
+                size = alt.value(199) 
             ) 
     
     chart.save("chart.png") 

@@ -84,8 +84,19 @@ attn_args = {
     "Prediction": "Attn", # CTC|Attm,
 }
 
+_craft_params = {
+    "text_threshold": .7,
+    "link_threshold": .4,
+    "low_text": .4,
+    "poly": False,
+    "canvas_size": 1280,
+    "mag_ratio": 1.5,
+    "cuda": False
+}
+
 class TextLocalizer:
     def __init__(self, method = 'default', craft_model = None,
+                                            craft_params = dict(),
                                             ocr = "tesseract",
                                             attn_params = dict()):
         """
@@ -100,6 +111,10 @@ class TextLocalizer:
         craft_model: str, optional
             If the chosen method is `craft`, this parameter
             must take the path to the pretrained model.
+
+        craft_params: dict, optional
+            The parameters for CRAFT (text localizer); it is,
+            by default, equal to the `_craft_params` global variable.
 
         ocr: str, optional
             The method for optical character recogintion;
@@ -119,6 +134,10 @@ class TextLocalizer:
 
         if self._method == "craft":
             self._craft_model = craft_model
+            self._craft_params = craft_params
+
+            for param, value in craft_params.items():
+                _craft_params[param] = value
 
         if self._ocr == "attn":
             for param, value in attn_params.items():
@@ -299,6 +318,8 @@ class TextLocalizer:
 
         net = CRAFT() # initialize the model
 
+        cuda = _craft_params["cuda"]
+
         if not os.path.isdir(folder):
             os.mkdir(folder)
 
@@ -324,7 +345,14 @@ class TextLocalizer:
             image_path = chart.filename
             image = loadImage(image_path)
 
-            bboxes, polys, score_text = self._craft_test_net(net, image, cuda = cuda)
+            bboxes, polys, score_text = self._craft_test_net(net, image)
+
+            # some boxes are completely white!
+            # for this, we can compute the
+            # variance of the pixels inside
+            # those box and, if it is numerically null,
+            # we can remove it
+            bboxes = self._craft_check_homogeneous_boxes(bboxes, image)
 
             # also, some boxes are really large;
             # specifically, when there is vertical text,
@@ -345,12 +373,6 @@ class TextLocalizer:
                 image_debug = loadImage(folder + "/res_" + filename + ".jpg")
                 u.show_image("image after craft-torch", image_debug)
 
-            # some boxes are completely white!
-            # for this, we can compute the
-            # variance of the pixels inside
-            # those box and, if it is numerically null,
-            # we can remove it
-            bboxes = self._craft_check_homogeneous_boxes(bboxes, image)
             for i, box in enumerate(bboxes):
                 xmin, xmax , ymin, ymax = self._get_points_boundary(box)
                 # xmin = min(box, key = lambda item: item[0])[0]
@@ -396,7 +418,7 @@ class TextLocalizer:
                 bboxes = ocr.deep_ocr(attn_args, attn_opt_args, text_boxes, image)
 
             # print(bboxes[9])
-            # min_conf = 9 
+            # min_conf = 9
             # bboxes = [box for box in bboxes if box._text_conf > min_conf]
 
             if debug:
@@ -437,9 +459,15 @@ class TextLocalizer:
         else:
             raise Exception('wrong "method" parameter, only supports: "default", "pixel_link" or "craft"')
 
-    def _craft_test_net(self, net, image, text_threshold = .7,
-                        link_threshold = .4, low_text = .4, poly = False,
-                        canvas_size = 1280, mag_ratio = 1.5, cuda = False):
+    def _craft_test_net(self, net, image):
+
+        text_threshold = _craft_params["text_threshold"]
+        link_threshold = _craft_params["link_threshold"]
+        low_text = _craft_params["low_text"]
+        poly = _craft_params["poly"]
+        canvas_size = _craft_params["canvas_size"]
+        mag_ratio = _craft_params["mag_ratio"]
+        cuda = _craft_params["cuda"]
 
         ts = time.time()
 
@@ -544,7 +572,9 @@ class TextLocalizer:
 
         # nboxes = []
 
-        for box in bboxes:
+        boxes = bboxes.tolist()
+
+        for i, box in enumerate(bboxes):
             xmin, xmax, ymin, ymax = self._get_points_boundary(box)
             box_width = xmax - xmin
             box_height = ymax - ymin
@@ -555,8 +585,9 @@ class TextLocalizer:
                 if debug:
                     u.show_image("score_text", score_text)
 
-                xmin, xmax = int(xmin), int(xmax)
-                ymin, ymax = int(ymin), int(ymax)
+                padding = 3
+                xmin, xmax = int(xmin) - padding, int(xmax) + padding
+                ymin, ymax = int(ymin) - padding, int(ymax) + padding
 
                 image_region = image[ymin:ymax, xmin:xmax]
 
@@ -564,10 +595,36 @@ class TextLocalizer:
                 if debug:
                     u.show_image("wide box", image_region)
 
-                nboxes, polys, score_text = self._craft_test_net(net, image, link_threshold = .8,
-                    low_text = .5, mag_ratio = 2.5, text_threshold = .3)
+                previous_threshold = _craft_params["link_threshold"]
+                previous_text = _craft_params["low_text"]
+                _craft_params["link_threshold"] = min(1, _craft_params["link_threshold"] * 2)
+                _craft_params["low_text"] = min(1, _craft_params["low_text"] * 2)
+                _craft_params["mag_ratio"] = _craft_params["mag_ratio"] * 4
 
-                return nboxes, polys, score_text
+                nboxes, polys, score_text = self._craft_test_net(net, image_region)
+
+                _craft_params["link_threshold"] = previous_threshold
+                _craft_params["low_text"] = previous_text
+
+                # print(nboxes)
+                if len(nboxes) > 0:
+                    for o, nbox in enumerate(nboxes):
+                        xl, xr, yb, yt = self._get_points_boundary(nbox)
+                        # print(xl, xr, yb, yt)
+                        alpha = 1.5 
+                        nbox = np.array([
+                            [xl + xmin - alpha * padding, yt + ymin - alpha * padding],
+                            [xl + xmin - alpha * padding, yb + ymin + alpha * padding],
+                            [xr + xmin + alpha * padding, yt + ymin + alpha * padding],
+                            [xr + xmin + alpha * padding, yb + ymin - alpha * padding]
+                        ])
+                        # print(nbox)
+                        if o == 0:
+                            boxes[i] = nbox
+                        else:
+                            boxes.append(nbox)
+
+                return np.array(boxes), polys, score_text
 
         return bboxes, polys, score_text
 
@@ -875,12 +932,16 @@ def merge_words(img, boxes, method = "default"):
     graph = nx.empty_graph(len(boxes))
     for i, b1 in enumerate(boxes):
         h1 = b1.h if b1._text_angle == 0 else b1.w
+
         for j, b2 in enumerate(boxes):
             h2 = b2.h if b2._text_angle == 0 else b2.w
             is_horizontal = b1._text_angle == 0 and b2._text_angle == 0
             same_angle = abs(b1._text_angle) == abs(b2._text_angle)
             same_height = ru.same_height(b1._rect, b2._rect, horiz=is_horizontal)
-            dist = min(h1, h2) if method == "default" else min(h1, h2)/float(2)
+            # strongly biased verifications direct us to use disparate factors
+            # for each box
+            fct = 2 if not is_horizontal else 4
+            dist = min(h1, h2) if method == "default" else min(h1, h2)/float(fct)
             near = ru.next_on_same_line(b1._rect, b2._rect, dist=dist, horiz=is_horizontal)
 
             if i == j or (same_angle and same_height and near):
