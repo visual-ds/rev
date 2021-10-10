@@ -90,7 +90,7 @@ _craft_params = {
     "low_text": .4,
     "poly": False,
     "canvas_size": 1280,
-    "mag_ratio": 1.5,
+    "mag_ratio": 1.8,
     "cuda": False
 }
 
@@ -611,7 +611,7 @@ class TextLocalizer:
                     for o, nbox in enumerate(nboxes):
                         xl, xr, yb, yt = self._get_points_boundary(nbox)
                         # print(xl, xr, yb, yt)
-                        alpha = 1.5 
+                        alpha = 1.5
                         nbox = np.array([
                             [xl + xmin - alpha * padding, yt + ymin - alpha * padding],
                             [xl + xmin - alpha * padding, yb + ymin + alpha * padding],
