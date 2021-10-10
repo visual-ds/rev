@@ -173,12 +173,14 @@ localizer = TextLocalizer(method = "craft",
   craft_model = "/path/to/model.pth")
 ```
 
+[!alt](io/chart.png)
+
 Also, we can choose, at this moment, the method for the text recognition: Tesseract or Attn. For Attn, in particular, we need additional (hyper)parameters; specifically, the path to the trained model, which is available (currently) at this [repository](https://github.com/clovaai/deep-text-recognition-benchmark), and other idiosyncratic aspects of the model, which are described in the documentation. The next snippet, then, represents its usage.
 
 ```python  
 localizer = TextLocalizer(method = "craft",
                           craft_model = "path/to/model",
-                          ocr = "attn", 
+                          ocr = "attn",
                           attn_params = {"saved_model": "path/to/model"}
 ```
 
