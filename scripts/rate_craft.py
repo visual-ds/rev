@@ -1,6 +1,6 @@
 """ 
 Usage: 
-    python rate_craft.py CHART_TYPE 
+    python rate_craft.py CHART_TYPE CUDA  
 
 CHART_TYPE must be one of `academic` or `quartz`; 
 they correspond to the source of our data. 
@@ -22,7 +22,7 @@ craft_model = "./models/craft/craft_mlt_25k.pth"
 data = "data/" 
 types = ["academic", "quartz", "vega"]  
 
-cuda = torch.cuda.is_available() 
+cuda = torch.cuda.is_available() and (len(sys.argv) > 2 and sys.argv[2])   
 
 def run_predictor(chart_list, root_dir): 
     for chart in chart_list: 
@@ -35,6 +35,7 @@ def run_predictor(chart_list, root_dir):
         chart.save_debug_image() 
         
         gc.collect() 
+        torch.cuda.empty_cache() 
 
 if __name__ == "__main__": 
     args = sys.argv 

@@ -10,7 +10,7 @@ import gc
 
 import torch
 from torch.autograd import Variable
-from torch.backends import cudnn 
+from torch.backends import cudnn
 
 from .. chart import Chart
 from .. textbox import TextBox
@@ -32,7 +32,7 @@ from . craft_text_detector import (
     loadImage,
     resize_aspect_ratio,
     normalizeMeanVariance,
-    cvt2HeatmapImg 
+    cvt2HeatmapImg
 )
 
 from . pixel_link_text_detector import text_detect, PixelLinkDetector
@@ -303,7 +303,7 @@ class TextLocalizer:
             os.mkdir(folder)
 
         trained_model = model_checkpoint or "../models/craft/weights/craft_mlt_25k.pth"
-        
+
         print("Loading model from " + trained_model)
         # If cuda is available, use it; otherwise,
         # we will do the computations on the cpu
@@ -387,8 +387,17 @@ class TextLocalizer:
 
             if self._ocr == "tesseract":
                 bboxes = ocr.run_ocr_in_boxes(image, text_boxes, pad = 3, psm = 8)
+                min_conf = 25
+                max_dist = 4
+                bboxes = [box for box in bboxes if box._text_conf > min_conf and box._text_dist < max_dist]
+                min_conf = 40
+                bboxes = [box for box in bboxes if box._text_conf > min_conf]
             elif self._ocr == "attn":
                 bboxes = ocr.deep_ocr(attn_args, attn_opt_args, text_boxes, image)
+
+            # print(bboxes[9])
+            # min_conf = 9 
+            # bboxes = [box for box in bboxes if box._text_conf > min_conf]
 
             if debug:
                 image_debug = chart.image.copy()

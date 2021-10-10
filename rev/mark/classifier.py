@@ -5,14 +5,14 @@ import caffe
 
 models = {
     'revision': {
-        'path': 'models/mark_classifier/revision/',
+        'path': '../models/mark_classifier/revision/',
         'model_file': 'deploy.prototxt',
         'weights_file': 'model_iter_50000.caffemodel',
         'mean_file': 'ilsvrc_2012_mean.npy',
         'categories_file': 'categories.txt'
     },
     'charts5cats': {
-        'path': 'models/mark_classifier/charts5cats/',
+        'path': '../models/mark_classifier/charts5cats/',
         'model_file': 'deploy.prototxt',
         'weights_file': 'model_iter_50000.caffemodel',
         'mean_file': 'ilsvrc_2012_mean.npy',

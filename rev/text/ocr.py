@@ -349,7 +349,7 @@ def deep_ocr(args, opt, text_boxes, chart_image, pad = 0):
 
             if confidence_score > box._text_conf:
                 box._text = pred
-                box._text_conf = confidence_score
+                box._text_conf = confidence_score * 100 
                 box._text_dist = 1e-9
                 box._text_angle = angle
                 # print(box._text, box._text_conf)
