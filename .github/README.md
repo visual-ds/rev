@@ -183,7 +183,7 @@ Also, we can choose, at this moment, the method for the text recognition: Tesser
 localizer = TextLocalizer(method = "craft",
                           craft_model = "path/to/model",
                           ocr = "attn",
-                          attn_params = {"saved_model": "path/to/model"}
+                          attn_params = {"saved_model": "path/to/model"})
 ```
 
 Then we use the `localize` method that receives a list of charts as input and returns the text boxes and text for each chart in the list.

@@ -608,10 +608,17 @@ class TextLocalizer:
 
                 # print(nboxes)
                 if len(nboxes) > 0:
+                    is_in_list = True 
+                    # whether wide box is in list 
                     for o, nbox in enumerate(nboxes):
                         xl, xr, yb, yt = self._get_points_boundary(nbox)
                         # print(xl, xr, yb, yt)
                         alpha = 1.5
+                        
+                        eps = .01 
+                        if (xr - xl) < eps or (yt - yb) < eps: 
+                            continue 
+
                         nbox = np.array([
                             [xl + xmin - alpha * padding, yt + ymin - alpha * padding],
                             [xl + xmin - alpha * padding, yb + ymin + alpha * padding],
@@ -619,8 +626,9 @@ class TextLocalizer:
                             [xr + xmin + alpha * padding, yb + ymin - alpha * padding]
                         ])
                         # print(nbox)
-                        if o == 0:
+                        if is_in_list:
                             boxes[i] = nbox
+                            is_in_list = False 
                         else:
                             boxes.append(nbox)
 
