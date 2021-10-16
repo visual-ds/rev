@@ -345,7 +345,12 @@ class TextLocalizer:
             image_path = chart.filename
             image = loadImage(image_path)
 
-            bboxes, polys, score_text = self._craft_test_net(net, image)
+            try: 
+                bboxes, polys, score_text = self._craft_test_net(net, image)
+            except: 
+                u.show_image(image) 
+                print("image has a strange behaviour!") 
+                return 
 
             # some boxes are completely white!
             # for this, we can compute the
@@ -601,8 +606,10 @@ class TextLocalizer:
                 _craft_params["low_text"] = min(1, _craft_params["low_text"] * 2)
                 _craft_params["mag_ratio"] = _craft_params["mag_ratio"] * 4
 
-                nboxes, polys, score_text = self._craft_test_net(net, image_region)
-
+                try: 
+                    nboxes, polys, score_text = self._craft_test_net(net, image_region)
+                except: 
+                    continue 
                 _craft_params["link_threshold"] = previous_threshold
                 _craft_params["low_text"] = previous_text
 
