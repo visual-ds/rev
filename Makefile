@@ -20,9 +20,9 @@ config:
 	\"${CONFIG}\"\} \
 	>> config.json   	
 models: 
-	!wget https://osf.io/ckj5z/download -O models.zip
-	!unzip models.zip 
+	wget https://osf.io/ckj5z/download -O models.zip
+	unzip models.zip 
 data: 
-	!wget https://osf.io/uwtsv/download -O data.zip
-	!unzip data.zip
+	wget https://osf.io/uwtsv/download -O data.zip
+	unzip data.zip
 
