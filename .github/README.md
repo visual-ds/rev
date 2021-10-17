@@ -16,7 +16,7 @@ Our pipeline consist of the following steps:
 In a perfect world, the following line
 
 ```sh
-ipython setup.ipy
+make 
 ```
 
 should prepare the computer for our pipeline (allowing, for instance, the execution of the cells in the notebook [Example.ipynb](https://github.com/visual-ds/rev/blob/craft/Example.ipynb)). Nevertheless, the world isn't perfect; so, we provide more details in the next paragraphs.  

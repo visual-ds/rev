@@ -343,8 +343,11 @@ class TextLocalizer:
         for chart in charts:
 
             image_path = chart.filename
-            image = loadImage(image_path)
-
+            try: 
+                image = loadImage(image_path)
+            except: 
+                raise Exception("the image" + image_path + "isn't available") 
+                
             try: 
                 bboxes, polys, score_text = self._craft_test_net(net, image)
             except: 
