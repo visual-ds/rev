@@ -13,9 +13,7 @@ setenv:
 	conda env create -f $(ENV) 
 darknet: 
 	git clone https://github.com/visual-ds/darknet  
-	cd darknet  
-	make   
-	cd ../. 
+		cd darknet && make  
 config: 
 	echo {\
 	\"darknet_lib_path\": \
