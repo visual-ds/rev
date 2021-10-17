@@ -6,7 +6,7 @@
 # OSF 
 
 ENV = env.yml 
-CONFIG = `pwd`/./darknet
+CONFIG = `pwd`/darknet/./darknet
 
 all: setenv darknet config models data
 setenv:  
