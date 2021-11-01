@@ -14,6 +14,8 @@ import sys
 import gc 
 import torch 
 
+sys.path.append(".") 
+
 from rev.chart import Chart 
 from rev.text.localizer import TextLocalizer 
 
