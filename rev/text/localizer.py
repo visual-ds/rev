@@ -4,12 +4,36 @@ import cv2
 import os
 import math
 import itertools
+import time
+import glob
+import gc
+
+import torch
+from torch.autograd import Variable
+from torch.backends import cudnn
 
 from .. chart import Chart
 from .. textbox import TextBox
 from .. import utils as u
 from . import rectutils as ru
 from . import ocr
+
+import sys
+sys.path.insert(1, os.path.join(sys.path[0], ".."))
+
+from . craft_text_detector import (
+    CRAFT,
+    get_files,
+    saveResult,
+    imgproc,
+    # craft_utils,
+    getDetBoxes,
+    adjustResultCoordinates,
+    loadImage,
+    resize_aspect_ratio,
+    normalizeMeanVariance,
+    cvt2HeatmapImg
+)
 
 from . pixel_link_text_detector import text_detect, PixelLinkDetector
 
@@ -22,25 +46,113 @@ from skimage.color import label2rgb
 
 import networkx as nx
 import numpy as np
+from PIL import Image
+# import imgproc
 
 from numpy import random
-
 
 
 #temporal
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 
+from collections import OrderedDict
 
+attn_opt_args = {
+    "workers": 4, # number of data loading workers
+    "batch_size": 192, # input batch size
+    "batch_max_length": 25, # maximum label length
+    "imgH": 32, # height of the input image
+    "imgW": 100, # width of the input image
+    "character": "0123456789abcdefghijklmnopqrstuvwxyz", # labels
+    # hyperparameters for model's architecture
+    "num_fiducial": 20, # number of fiducial points of TPS-STN
+    "input_channel": 1, # number of input channel of Feature Extractor
+    "output_channel": 512, # number of output channel of Feature Extractor
+    "hidden_size": 256, # size of the LSTM hidden state
+    "rgb": False, # use rgb input
+    "PAD": False, # whether to keep ratio when pad for image resize
+    "sensitive": True
+}
+
+attn_args = {
+    "image_folder": "__temp_ocr__", # path to text images
+    "saved_model": None, # path to model for evaluation
+    "Transformation": "TPS", # None|TPS
+    "FeatureExtraction": "ResNet", # VGG|RCNN|ResNet
+    "SequenceModeling": "BiLSTM", # None|BiLSTM
+    "Prediction": "Attn", # CTC|Attm,
+}
+
+_craft_params = {
+    "text_threshold": .7,
+    "link_threshold": .4,
+    "low_text": .4,
+    "poly": False,
+    "canvas_size": 1280,
+    "mag_ratio": 1.8,
+    "cuda": False
+}
 
 class TextLocalizer:
-    def __init__(self, method = 'default'):
+    def __init__(self, method = 'default', craft_model = None,
+                                            craft_params = dict(),
+                                            ocr = "tesseract",
+                                            attn_params = dict()):
+        """
+        Class constructor for text localizer.
+
+        Parameters
+        --------------
+        method: str, optional
+            The method used for text localization; currently,
+            `default` and `craft` are supported.
+
+        craft_model: str, optional
+            If the chosen method is `craft`, this parameter
+            must take the path to the pretrained model.
+
+        craft_params: dict, optional
+            The parameters for CRAFT (text localizer); it is,
+            by default, equal to the `_craft_params` global variable.
+
+        ocr: str, optional
+            The method for optical character recogintion;
+            it can be `tesseract`, the default, or `attn`;
+            in the latter case, additional parameters are necessary.
+
+        attn_params: dict, optional
+            The parameters for using deep_ocr; the documentation
+            of this library lists them. :)
+        """
         self._method = method
+        self._ocr = ocr
 
         if self._method == 'pixel_link':
             self._pixel_link_detector = PixelLinkDetector()
             self._pixel_link_detector.init()
 
+        if self._method == "craft":
+            self._craft_model = craft_model
+            self._craft_params = craft_params
+
+            for param, value in craft_params.items():
+                _craft_params[param] = value
+
+        if self._ocr == "attn":
+            for param, value in attn_params.items():
+                if param in attn_args.keys():
+                    attn_args[param] = value
+                elif param in attn_opt_args.keys():
+                    attn_opt_args[param] = value
+                else:
+                    raise KeyError(f"the param {param} isn't available")
+
+        if self._ocr not in ["attn", "tesseract"]:
+            raise ValueError("ocr must be equal to `attn` or `tesseract`")
+
+        # if self._ocr == "attn" and self._method == "default":
+        #     raise ValueError("use `attn` with `craft`; `default` method doesn't support `attn`")
 
     def default_localize(self, charts, preproc_scale = 1.5, debug=False):
 
@@ -75,15 +187,32 @@ class TextLocalizer:
             # merging characters
             boxes = merge_characters(img, bw_rec, boxes, preproc_scale, debug)
 
+            # if debug:
+            #     print(boxes)
+
             # Apply OCR and filter by confidence and filter
-            boxes = ocr.run_ocr_in_boxes(img, boxes, pad=3, psm=8) #8 for single word
-            min_conf = 25
-            max_dist = 4
-            boxes = [box for box in boxes if box._text_conf > min_conf and box._text_dist < max_dist]
-            min_conf = 40
-            boxes = [box for box in boxes if box._text_conf > min_conf]
+            if self._ocr == "tesseract":
+                boxes = ocr.run_ocr_in_boxes(img, boxes, pad=3, psm=8) #8 for single word
+                min_conf = 25 if self._ocr == "tesseract" else .25
+                max_dist = 4
+                boxes = [box for box in boxes if box._text_conf > min_conf and box._text_dist < max_dist]
+                min_conf = 40 if self._ocr == "tesseract" else .4
+                boxes = [box for box in boxes if box._text_conf > min_conf]
+            elif self._ocr == "attn":
+                boxes = ocr.deep_ocr(attn_args,
+                        attn_opt_args,
+                        boxes,
+                        img,
+                        pad = 3)
+                boxes = [box for box in boxes if box._text != ""]
+
 
             if debug:
+                confs = [box._text_conf for box in boxes]
+                print("confidence", np.max(confs))
+
+            if debug:
+                print(boxes)
                 vis = u.draw_rects(cv2.cvtColor(bw_rec, cv2.COLOR_GRAY2BGR), boxes, color=(0, 0, 255), thickness=2)
                 show_image('after ocr conf', vis, 400, 600)
 
@@ -105,7 +234,7 @@ class TextLocalizer:
                 show_image('original', vis2, 0, 900)
 
             lsboxes.append(boxes)
-        
+
         return lsboxes
 
     def pixel_link_localize(self, charts, debug=False):
@@ -126,13 +255,13 @@ class TextLocalizer:
                     cv2.polylines(img_temp,[pts],True,(0,0,255))
 
                     cv2.putText(img_temp, str(i), (bbox[0],bbox[1]), cv2.FONT_HERSHEY_SIMPLEX, 0.4, 255)
-                
+
                 show_image('pixel_link bboxes', img_temp)
 
-        
+
             points = [ e.reshape(-1,2) for e in np.array(points)]
 
-        
+
             # Apply OCR and filter by confidence and filter
             img = chart.image.copy()
 
@@ -146,7 +275,7 @@ class TextLocalizer:
                 boxes2.append(TextBox(i, xmin, ymin, xmax-xmin, ymax-ymin))
 
             #boxes = ocr.run_ocr_in_boxes(img, boxes2, pad=3, psm=8, debug=True) #8 for single word
-            
+
 
             if debug:
                 img_temp = chart.image.copy()
@@ -179,26 +308,409 @@ class TextLocalizer:
                 show_image('merged bboxes', vis)
 
             lsboxes.append(boxes)
-    
-        return lsboxes
-        
 
-    def localize(self, charts, debug=False):
-        
+        return lsboxes
+
+    def craft_localize(self, charts, debug = False,
+            model_checkpoint = None,
+            folder = "./images",
+            cuda = False):
+
+        net = CRAFT() # initialize the model
+
+        cuda = _craft_params["cuda"]
+
+        if not os.path.isdir(folder):
+            os.mkdir(folder)
+
+        trained_model = model_checkpoint or "../models/craft/weights/craft_mlt_25k.pth"
+
+        print("Loading model from " + trained_model)
+        # If cuda is available, use it; otherwise,
+        # we will do the computations on the cpu
+        if cuda:
+            net.load_state_dict(copyStateDict(torch.load(trained_model)))
+        else:
+            net.load_state_dict(copyStateDict(torch.load(trained_model, map_location = "cpu")))
+
+        if cuda:
+            net = net.cuda()
+            net = torch.nn.DataParallel(net)
+            cudnn.benchmark = False
+
+        lsboxes = []
+
+        for chart in charts:
+
+            image_path = chart.filename
+            try: 
+                image = loadImage(image_path)
+            except: 
+                raise Exception("the image" + image_path + "isn't available") 
+                
+            try: 
+                bboxes, polys, score_text = self._craft_test_net(net, image)
+            except: 
+                u.show_image(image) 
+                print("image has a strange behaviour!") 
+                return 
+
+            # some boxes are completely white!
+            # for this, we can compute the
+            # variance of the pixels inside
+            # those box and, if it is numerically null,
+            # we can remove it
+            bboxes = self._craft_check_homogeneous_boxes(bboxes, image)
+
+            # also, some boxes are really large;
+            # specifically, when there is vertical text,
+            # then, we will try to apply the model with another
+            # parameters
+            bboxes, polys, score_text = self._craft_check_wide_boxes(bboxes, image,
+                net, polys, score_text, debug)
+
+            filename, file_ext = os.path.splitext(os.path.basename(image_path))
+            mask_file = folder + "/res_" + filename + "_mask.jpg"
+            cv2.imwrite(mask_file, score_text)
+
+            saveResult(image_path, image[:, :, ::-1], polys, dirname = folder + "/")
+
+            text_boxes = []
+
+            if debug:
+                image_debug = loadImage(folder + "/res_" + filename + ".jpg")
+                u.show_image("image after craft-torch", image_debug)
+
+            for i, box in enumerate(bboxes):
+                xmin, xmax , ymin, ymax = self._get_points_boundary(box)
+                # xmin = min(box, key = lambda item: item[0])[0]
+                # xmax = max(box, key = lambda item: item[0])[0]
+                # ymin = min(box, key = lambda item: item[1])[1]
+                # ymax = max(box, key = lambda item: item[1])[1]
+                text_boxes.append(TextBox(i, xmin, ymin, xmax - xmin, ymax - ymin))
+
+            # we will save the text box images in
+            # a conveniently placed directory;
+            # we will, then, use this images for the ocr
+            if debug:
+                dest_dir = "imgboxes"
+                files = glob.glob(dest_dir + "/*")
+                for file in files: os.remove(file)
+
+                for i, box in enumerate(bboxes):
+                    xmin, xmax, ymin, ymax = self._get_points_boundary(box)
+                    xmin, xmax = int(xmin), int(xmax)
+                    ymin, ymax = int(ymin), int(ymax)
+
+                    image_region = image[ymin:ymax, xmin:xmax]
+
+
+                    if not os.path.exists(dest_dir):
+                        os.mkdir(dest_dir)
+
+                    img = Image.fromarray(image_region)
+                    img.save(dest_dir + "/box" + str(i) + ".jpeg")
+
+
+
+            # return ocr.deep_ocr(dlocr_args, dlocr_opt_args, text_boxes)
+
+            if self._ocr == "tesseract":
+                bboxes = ocr.run_ocr_in_boxes(image, text_boxes, pad = 3, psm = 8)
+                min_conf = 25
+                max_dist = 4
+                bboxes = [box for box in bboxes if box._text_conf > min_conf and box._text_dist < max_dist]
+                min_conf = 40
+                bboxes = [box for box in bboxes if box._text_conf > min_conf]
+            elif self._ocr == "attn":
+                bboxes = ocr.deep_ocr(attn_args, attn_opt_args, text_boxes, image)
+
+            # print(bboxes[9])
+            # min_conf = 9
+            # bboxes = [box for box in bboxes if box._text_conf > min_conf]
+
+            if debug:
+                image_debug = chart.image.copy()
+                image_debug = u.draw_boxes(image_debug, bboxes)
+                u.show_image("bboxes after ocr", image_debug)
+
+            bboxes = merge_words(image, bboxes, method = "craft")
+
+            if debug:
+                image_debug = chart.image.copy()
+                image_debug = u.draw_boxes(image_debug, bboxes)
+                u.show_image("bboxes after merging words", image_debug)
+
+            lsboxes.append(bboxes)
+
+            bboxes = None
+
+        if torch.cuda.is_available():
+            gc.collect()
+            torch.cuda.empty_cache()
+
+        return lsboxes
+
+    def localize(self, charts, debug=False, cuda = False):
+
         if self._method == 'default':
             return self.default_localize(charts, 1.5, debug)
 
         elif self._method == 'pixel_link':
             return self.pixel_link_localize(charts, debug)
-        else:
-            raise Exception('wrong "method" parameter, only supports: "default" or "pixel_link"')
 
+        elif self._method == "craft":
+            return self.craft_localize(charts,
+                                                model_checkpoint = self._craft_model,
+                                                debug = debug, cuda = cuda)
+
+        else:
+            raise Exception('wrong "method" parameter, only supports: "default", "pixel_link" or "craft"')
+
+    def _craft_test_net(self, net, image):
+
+        text_threshold = _craft_params["text_threshold"]
+        link_threshold = _craft_params["link_threshold"]
+        low_text = _craft_params["low_text"]
+        poly = _craft_params["poly"]
+        canvas_size = _craft_params["canvas_size"]
+        mag_ratio = _craft_params["mag_ratio"]
+        cuda = _craft_params["cuda"]
+
+        ts = time.time()
+
+        # resize image
+        img_resized, target_ratio, size_heatmap = resize_aspect_ratio(image,
+                                            canvas_size, interpolation=cv2.INTER_LINEAR,
+                                            mag_ratio = mag_ratio)
+
+        ratio_h = ratio_w = 1/target_ratio
+
+        # preprocess image
+        x = normalizeMeanVariance(img_resized)
+        x = torch.from_numpy(x).permute(2, 0, 1) # [h, w, c] to [c, h, w]
+        x = Variable(x.unsqueeze(0)) # [c, h, w] to [b, c, h, w]
+
+        if cuda:
+            x = x.cuda()
+
+        # forward pass
+        with torch.no_grad():
+            y, feature = net(x)
+
+        # I should read the paper to write about what is actually
+        # happening here
+
+        # make score and link map
+        score_text = y[0,:,:,0].cpu().data.numpy()
+        score_link = y[0,:,:,1].cpu().data.numpy()
+
+        ts = time.time() - ts
+
+        tf = time.time()
+
+        # post process
+        boxes, polys = getDetBoxes(score_text, score_link,
+                                            text_threshold, link_threshold,
+                                            low_text)
+
+        # coordinate adjustment
+        boxes = adjustResultCoordinates(boxes, ratio_w, ratio_h)
+        polys = adjustResultCoordinates(polys, ratio_w, ratio_h)
+
+        for k in range(len(polys)):
+            if polys[k] is None: polys[k] = boxes[k]
+
+        tf = time.time() - tf
+
+        # render images
+        render_img = score_text.copy()
+        render_img = np.hstack((render_img, score_link))
+        ret_score_text = cvt2HeatmapImg(render_img)
+
+        return boxes, polys, ret_score_text
+
+    def _craft_check_homogeneous_boxes(self, boxes, image):
+        print(image.shape)
+
+        cboxes = [] # boxes with actually something
+        white = (255, 255, 255)
+
+        # in this loop, we check for boxes
+        # kind of homegeneous in color
+        for box in boxes:
+            mask = np.zeros(image.shape, dtype = np.uint8)
+            maskbox = np.array([box], dtype = np.int32)
+            cv2.fillPoly(mask, maskbox, white)
+            # mask = np.zeros(image.shape, dtype = np.uint8)
+
+            # u.show_image("A", mask)
+            colors = image[np.where((mask == white).all(axis = 2))]
+
+            if not np.isclose(colors.var(), 0):
+                cboxes.append(box)
+            # print(colors.min(), colors.max(), colors.var())
+
+        # now, we have boxes with this structure:
+        # ---------
+        # |Text   |
+        # ---------
+        # that is, the boxes aren't really tight
+        # to fix (to some extent) this, we need to
+        # search for an axis to tighten the box
+        # then, we will do a binary search
+        for i, box in enumerate(cboxes):
+            # we start searching for the right most
+            # boundary
+            box = self._right_search(box, image)
+            # then, we search for the left most
+            # boundary
+            box = self._left_search(box, image)
+
+            # update with (possibly) tight box
+            cboxes[i] = box
+
+        return np.array(cboxes)
+
+    def _craft_check_wide_boxes(self, bboxes, image, net, polys, score_text, debug):
+
+        width, height, _ = image.shape
+
+        white = (255, 255, 255)
+
+        # nboxes = []
+
+        boxes = bboxes.tolist()
+
+        for i, box in enumerate(bboxes):
+            xmin, xmax, ymin, ymax = self._get_points_boundary(box)
+            box_width = xmax - xmin
+            box_height = ymax - ymin
+
+            if box_width > width/2:
+                print("Wide box!")
+
+                if debug:
+                    u.show_image("score_text", score_text)
+
+                padding = 3
+                xmin, xmax = int(xmin) - padding, int(xmax) + padding
+                ymin, ymax = int(ymin) - padding, int(ymax) + padding
+
+                image_region = image[ymin:ymax, xmin:xmax]
+
+                # print(self._craft_test_net(net, image_region))
+                if debug:
+                    u.show_image("wide box", image_region)
+
+                previous_threshold = _craft_params["link_threshold"]
+                previous_text = _craft_params["low_text"]
+                _craft_params["link_threshold"] = min(1, _craft_params["link_threshold"] * 2)
+                _craft_params["low_text"] = min(1, _craft_params["low_text"] * 2)
+                _craft_params["mag_ratio"] = _craft_params["mag_ratio"] * 4
+
+                try: 
+                    nboxes, polys, score_text = self._craft_test_net(net, image_region)
+                except: 
+                    continue 
+                _craft_params["link_threshold"] = previous_threshold
+                _craft_params["low_text"] = previous_text
+
+                # print(nboxes)
+                if len(nboxes) > 0:
+                    is_in_list = True 
+                    # whether wide box is in list 
+                    for o, nbox in enumerate(nboxes):
+                        xl, xr, yb, yt = self._get_points_boundary(nbox)
+                        # print(xl, xr, yb, yt)
+                        alpha = 1.5
+                        
+                        eps = .01 
+                        if (xr - xl) < eps or (yt - yb) < eps: 
+                            continue 
+
+                        nbox = np.array([
+                            [xl + xmin - alpha * padding, yt + ymin - alpha * padding],
+                            [xl + xmin - alpha * padding, yb + ymin + alpha * padding],
+                            [xr + xmin + alpha * padding, yt + ymin + alpha * padding],
+                            [xr + xmin + alpha * padding, yb + ymin - alpha * padding]
+                        ])
+                        # print(nbox)
+                        if is_in_list:
+                            boxes[i] = nbox
+                            is_in_list = False 
+                        else:
+                            boxes.append(nbox)
+
+                return np.array(boxes), polys, score_text
+
+        return bboxes, polys, score_text
+
+    def _get_points_boundary(self, box):
+
+        xmin = min(box, key = lambda x: x[0])[0]
+        xmax = max(box, key = lambda x: x[0])[0]
+        ymin = min(box, key = lambda x: x[1])[1]
+        ymax = max(box, key = lambda x: x[1])[1]
+
+        return xmin, xmax, ymin, ymax
+
+    def _right_search(self, box, image, it = 1, maxit = 10):
+
+        if it >= maxit:
+            return box
+
+        xmin, xmax, ymin, ymax = self._get_points_boundary(box)
+        width = xmax - xmin
+
+        m = xmin + width/2
+        white = (255, 255, 255)
+
+        mask = np.zeros(image.shape, dtype = np.uint8)
+
+        # update box
+        rbox = np.where(box == xmin, m, box)
+        lbox = np.where(box == xmax, m, box)
+        maskbox = np.array([rbox], dtype = np.int32)
+        cv2.fillPoly(mask, maskbox, white)
+
+        colors = image[np.where((mask == white).all(axis = 2))]
+
+        if np.isclose(colors.var(), 0):
+            return self._right_search(lbox, image, it = it + 1)
+        else:
+            return box
+
+    def _left_search(self, box, image, it = 1, maxit = 9):
+
+        if it >= maxit:
+            return box
+
+        xmin, xmax, ymin, ymax = self._get_points_boundary(box)
+        width = xmax - xmin
+
+        m = xmin + width/2
+        white = (255, 255, 255)
+
+        mask = np.zeros(image.shape, dtype = np.int32)
+
+        # lbox and rbox
+        rbox = np.where(box == xmin, m, box)
+        lbox = np.where(box == xmax, m, box)
+
+        maskbox = np.array([lbox], dtype = np.int32)
+        cv2.fillPoly(mask, maskbox, white)
+
+        colors = image[np.where((mask == white).all(axis = 2))]
+
+        if np.isclose(colors.var(), 0):
+            return self._left_search(rbox, image, it = it + 1)
+        else:
+            return box
 
 
 # functions
 def apply_mask(bw, pred):
-
-    #print(pred)
 
     h, w = bw.shape
     pred = cv2.resize(pred, (w, h), interpolation=cv2.INTER_LINEAR)
@@ -244,7 +756,7 @@ def show_image(name, image, x=0, y=0):
     imgplot = plt.imshow(image)
     plt.gcf().canvas.set_window_title(name)
     plt.show()
-    
+
     #new_name = '%s - %s - [%0.2f, %0.2f] - %s' % (name, image.shape, image.min(), image.max(), image.dtype.name)
     #image = image.astype(np.uint8)
     #cv2.imshow(new_name, image)
@@ -418,20 +930,37 @@ def merge_characters(img, bw, boxes, scale,  debug = False):
         vis = u.draw_rects(vis, boxes)
         show_image('mst_filtered', vis, 0, 600)
 
+    # if torch.cuda.is_available():
+    #     torch.cuda.empty_cache()
+    #
     return boxes
 
+def copyStateDict(state_dict):
+    if list(state_dict.keys())[0].startswith("module"):
+        start_idx = 1
+    else:
+        start_idx = 0
+    new_state_dict = OrderedDict()
+    for k, v in state_dict.items():
+        name = ".".join(k.split(".")[start_idx:])
+        new_state_dict[name] = v
+    return new_state_dict
 
-def merge_words(img, boxes):
+def merge_words(img, boxes, method = "default"):
     graph = nx.empty_graph(len(boxes))
     for i, b1 in enumerate(boxes):
         h1 = b1.h if b1._text_angle == 0 else b1.w
+
         for j, b2 in enumerate(boxes):
             h2 = b2.h if b2._text_angle == 0 else b2.w
-
             is_horizontal = b1._text_angle == 0 and b2._text_angle == 0
             same_angle = abs(b1._text_angle) == abs(b2._text_angle)
             same_height = ru.same_height(b1._rect, b2._rect, horiz=is_horizontal)
-            near = ru.next_on_same_line(b1._rect, b2._rect, dist=min(h1, h2), horiz=is_horizontal)
+            # strongly biased verifications direct us to use disparate factors
+            # for each box
+            fct = 2 if not is_horizontal else 4
+            dist = min(h1, h2) if method == "default" else min(h1, h2)/float(fct)
+            near = ru.next_on_same_line(b1._rect, b2._rect, dist=dist, horiz=is_horizontal)
 
             if i == j or (same_angle and same_height and near):
                 graph.add_edge(i, j)

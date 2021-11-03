@@ -3,7 +3,7 @@
 Rate the predicted bounding boxes.
 
 Usage:
-    rate_box_predictor.py INPUT_LIST_TXT (--mask | --perfect | --overlap) [--from_bbs=FROM] [--pad=PAD] [--debug]
+    rate_box_predictor.py INPUT_LIST_TXT (--mask | --perfect | --overlap) [--from_bbs=FROM] [--pad=PAD] [--debug] [--method=METHOD]
     rate_box_predictor.py (-h | --help)
     rate_box_predictor.py --version
 
@@ -14,6 +14,7 @@ Options:
     --from_bbs FROM   1: from predicted1-bbs.csv
                       2: from predicted2-bbs.csv  [default: 1]
     --pad PAD         Add padding to boxes [default: 0]
+    --method METHOD   Method for text localization. 
     --debug           Show debug image.
     -h --help         Show this screen.
     --version         Show version.
@@ -34,12 +35,17 @@ from rev.third_party.mwmatching import maxWeightMatching
 from joblib import Parallel, delayed
 import multiprocessing
 
+from datetime import datetime 
+
 DEBUG = False
 
 
 def rate_boxes_using_masks(chart, from_bbs, pad=0):
     fh, fw, _ = chart.image.shape
     truth_boxes = chart.text_boxes
+
+    # u.show_image("chart", chart.image)
+
     pred_boxes = chart.get_text_boxes(text_from = from_bbs)
 
     if pad > 0:
@@ -200,6 +206,13 @@ def main(args):
     if args['--debug']:
         num_cores = 1
 
+    # data = chart_dataset(chart_list)
+
+    if args["--debug"]:
+        for chart in data:
+            print(chart.image)
+
+
     if args['--mask']:
         # run in parallel
         results = Parallel(n_jobs=num_cores, verbose=1, backend='multiprocessing')(
@@ -211,7 +224,26 @@ def main(args):
         print('Precision: %0.2f' % coeffs[:, 2].mean())
         print('Recall   : %0.2f' % coeffs[:, 3].mean())
         print('F1-Score : %0.2f' % coeffs[:, 4].mean())
+        
+        slash = chart_list.rindex("/") + 1  
+        punct = chart_list.rindex(".") 
+        dataset = chart_list[slash:punct]  
+        filename = datetime.today().strftime("%Y-%m-%d") 
+        filename = "io/metrics-" + filename + ".csv" 
+        
+        metrics = coeffs.mean(axis = 0) 
+        
+        method = args["--method"] or "_" 
 
+        with open(filename, "w") as file: 
+            data = f"""dataset,metric,method,value
+{dataset},dice,{method},{metrics[0]}  
+{dataset},jaccard,{method},{metrics[1]}
+{dataset},precision,{method},{metrics[2]}
+{dataset},recall,{method},{metrics[3]}
+{dataset},f1,{method},{metrics[4]}
+""" 
+            file.write(data) 
 
     if args['--perfect']:
         # run in parallel
@@ -237,9 +269,9 @@ def main(args):
 
 
 if __name__ == '__main__':
-    
+
     args = docopt(__doc__, version='1.0')
-    
+
 
     if args['--debug']:
         DEBUG = True

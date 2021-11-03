@@ -1,0 +1,6 @@
+dataset,metric,method,value
+quartz,dice,default,0.8656086730837936  
+quartz,jaccard,default,0.7698161911273913
+quartz,precision,default,0.8425628509770166
+quartz,recall,default,0.8989208234903273
+quartz,f1,default,0.8656086730837936

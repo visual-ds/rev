@@ -56,18 +56,21 @@ VALID_COLUMNS = [
 
 
 class TextClassifier:
-    def __init__(self, model_name=None):
-        if model_name is None:
+    def __init__(self, model_name=None, model_checkpoint = None):
+        if model_name is None and model_checkpoint is None:
             # Pipeline: standardization -> svm
             my_svm = svm.SVC(C=100, gamma=0.1, class_weight='balanced', kernel='rbf', probability=True)
             self._clf = make_pipeline(StandardScaler(), my_svm)
-        else:
+        elif model_name is not None:
             model_file = model_files[model_name]
-            
+
             #self._clf = pickle.load(model_file)
             with open(model_file, 'rb') as pickle_file:
                 self._clf = pickle.load(pickle_file)
             #self._clf = content
+        else:
+            with open(model_checkpoint, "rb") as pickle_file:
+                self._clf = pickle.load(pickle_file)
 
     def train(self, features, types):
         """
@@ -106,12 +109,12 @@ class TextClassifier:
         u.print_cm(cm, labels=labels)
 
     def classify(self, charts, with_post=False, draw_debug=False, pad=0, save=False):
-        
+
         ls_pred_types = []
         for chart in charts:
             pred_types = self.classify_single(chart, with_post, draw_debug, pad, save)
             ls_pred_types.append(pred_types)
-        
+
         return ls_pred_types
 
     def classify_single(self, chart, with_post=False, draw_debug=False, pad=0, save=False):
@@ -163,6 +166,3 @@ class TextClassifier:
         with open(filename, 'wb') as pickle_file:
             pickle.dump(self._clf, pickle_file)
         #pickle.dump(self._clf, filename, 'wb')
-
-
-

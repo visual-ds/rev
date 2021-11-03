@@ -7,14 +7,22 @@
 # Python egg metadata, regenerated from source files by setuptools.
 /*.egg-info
 
-data/*
+data/
 models/*
+images/* 
+imgboxes/* 
 
 data
 models
+images 
+imgboxes 
+
+revision
+darknet 
 
 out.*
 
+config.json
 #test
 .ipynb_checkpoints/
 .vscode/

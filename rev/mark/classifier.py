@@ -1,16 +1,18 @@
 import numpy as np
+import os
+os.environ['GLOG_minloglevel'] = '2'
 import caffe
 
 models = {
     'revision': {
-        'path': 'models/mark_classifier/revision/',
+        'path': '../models/mark_classifier/revision/',
         'model_file': 'deploy.prototxt',
         'weights_file': 'model_iter_50000.caffemodel',
         'mean_file': 'ilsvrc_2012_mean.npy',
         'categories_file': 'categories.txt'
     },
     'charts5cats': {
-        'path': 'models/mark_classifier/charts5cats/',
+        'path': '../models/mark_classifier/charts5cats/',
         'model_file': 'deploy.prototxt',
         'weights_file': 'model_iter_50000.caffemodel',
         'mean_file': 'ilsvrc_2012_mean.npy',
@@ -51,7 +53,7 @@ class MarkClassifier:
         for block_charts in chunks(charts, 100):
             #print('joaooooooooooooooooooo', [type(chart.filename) for chart in block_charts])
 
-             
+
             inputs = [caffe.io.load_image(chart.filename) for chart in block_charts]
 
             predictions = self._net.predict(inputs, True)

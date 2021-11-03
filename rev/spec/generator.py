@@ -14,7 +14,7 @@ class SpecGenerator:
     def __init__(self):
         self._mark_classifier = MarkClassifier()
 
-    
+
     def filter(self, text_type, text_boxes:List[TextBox]):
         boxes = [box for box in text_boxes if box._type == text_type]
 
@@ -26,12 +26,12 @@ class SpecGenerator:
             boxes = sorted(boxes, key=lambda b: b.yc, reverse=True)
 
         return boxes
-    
+
     def generate(self, charts:List[Chart]):
 
         mark_types = self._mark_classifier.classify(charts)
 
-        ls_specs = [] 
+        ls_specs = []
 
         for index, chart in enumerate(charts):
             spec = OrderedDict()
@@ -51,7 +51,7 @@ class SpecGenerator:
 
     def encoding(self, chart):
         enc = OrderedDict()
-        
+
         h, w, _ = chart.image.shape
 
         x_title_boxes = self.filter('x-axis-title', chart.text_boxes)
@@ -66,10 +66,3 @@ class SpecGenerator:
         enc['y'] = y_chanel.gen()
 
         return enc
-
-        
-
-            
-             
-
-        

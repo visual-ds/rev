@@ -12,6 +12,11 @@ class TextBox(object):
         self._type = type
         self._text = text
 
+        self.xmin = x
+        self.xmax = x + w
+        self.ymin = y
+        self.ymax = y + h 
+
         self._text_conf = text_conf
         self._text_dist = text_dist
         self._text_angle = text_angle
@@ -45,7 +50,7 @@ class TextBox(object):
         nh = min(self.y + self.h + pady, fh) - ny
         self._rect = (nx, ny, nw, nh)
 
-    
+
     @property
     def type(self):
         return self._type
@@ -199,4 +204,3 @@ class TextBox(object):
     @property
     def num_comp(self):
         return len(self._regions)
-
