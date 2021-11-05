@@ -22,6 +22,7 @@ make
 should prepare the computer for our pipeline (allowing, for instance, the execution of the cells in the notebook [Example.ipynb](https://github.com/visual-ds/rev/blob/craft/Example.ipynb)). Nevertheless, the world isn't perfect; so, we provide more details in the next paragraphs.  
 
 ## News 
+
 The Pull Request [#1](https://github.com/visual-ds/rev/pull/1) introduced deep learning based methods for text localization and recoginition: explicitly, we are using CRAFT for text localization and TRBA for text recognition (OCR); this README.md aims to describe the usage of both within our pipeline. The default approachs, an heuristic method for text localization and Tesseract for OCR, are still available.
 
 ### Installation
@@ -32,7 +33,7 @@ git clone git@github.com:visual-ds/rev.git
 
 We are using [OSF](osf.io); the data and the models, which need to be unziped, are available in this [link](https://osf.io/wubdr/).
 
-For the posterity, we also let the previous folder with the models: it is available in [Google Drive](https://drive.google.com/drive/folders/1lXpoi4lwUW3ZZCojq0bHnJTubSmStKhJ).
+For the posterity, we also let the previous folder with the models: it is available in [Google Drive](https://drive.google.com/drive/folders/1lXpoi4lwUW3ZZCojq0bHnJTubSmStKhJ). 
 
 #### Dependencies
 * You can use any package manager to install the basic dependencies, we suggest creating an environment in conda:

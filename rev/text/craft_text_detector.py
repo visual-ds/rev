@@ -7,6 +7,7 @@ MIT License
 The following lines consolidate the files
 available in https://github.com/clovaai/CRAFT-pytorch.
 """
+
 # -*- coding: utf-8 -*-
 from collections import namedtuple
 

@@ -1,2 +1,2 @@
-from .classifier import TextClassifier 
+from .classifier import TextClassifier
 #from .localizer import TextLocalizer
