@@ -19,7 +19,7 @@ In a perfect world, the following line
 make && conda activate rev
 ```
 
-should prepare the computer for our pipeline (allowing, for instance, the execution of the cells in the notebook [Example.ipynb](./notebooks/Example.ipynb)). Nevertheless, the world isn't perfect; so, we provide more details in the next paragraphs.  
+should prepare the computer for our pipeline (allowing, for instance, the execution of the cells in the notebook [Example.ipynb](../notebooks/Example.ipynb)). Nevertheless, the world isn't perfect; so, we provide more details in the next paragraphs.  
 
 ### Installation
 You first need to download our code:  
