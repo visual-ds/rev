@@ -2,6 +2,11 @@
 Copyright (c) 2019-present NAVER Corp.
 MIT License
 """
+
+"""
+The following lines consolidate the files
+available in https://github.com/clovaai/deep-text-recognition-benchmark.
+"""
 # -*- coding: utf-8 -*-
 from collections import namedtuple
 
