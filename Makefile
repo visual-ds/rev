@@ -8,7 +8,7 @@
 ENV = env.yml 
 CONFIG = `pwd`/darknet/./darknet
 
-all: setenv install darknet config models data
+all: setenv darknet config models data install
 setenv:  
 	conda env create -f $(ENV) 
 install: 
