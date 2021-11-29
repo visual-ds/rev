@@ -460,7 +460,8 @@ class TextLocalizer:
             return self.pixel_link_localize(charts, debug)
 
         elif self._method == "craft":
-            return self.craft_localize(charts,
+            with torch.no_grad(): 
+                return self.craft_localize(charts,
                                                 model_checkpoint = self._craft_model,
                                                 debug = debug, cuda = cuda)
 
