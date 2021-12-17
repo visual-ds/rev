@@ -5,7 +5,7 @@
 # config.json and taking the models from 
 # OSF 
 
-ENV = env.yml 
+ENV = environment.yml 
 CONFIG = `pwd`/darknet/./darknet
 CONDA_ENV_NAME=rev
 
