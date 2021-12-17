@@ -25,7 +25,7 @@ jobs:
         make config 
         make models 
         make data 
-   - name: Check models 
+    - name: Check models 
       run: |
         python scripts/rate_craft.py academic
 
