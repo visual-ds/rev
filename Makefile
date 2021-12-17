@@ -20,7 +20,7 @@ else
 endif 
 
 
-all: setenv darknet config models data install
+all: setenv caffe darknet config models data install
 setenv:  
 ifeq (True, $(HAS_CONDA))  
 ifneq ("$(wildcard $(MY_ENV_DIR))", "") # Check whether the directory exists 
