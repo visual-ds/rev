@@ -21,66 +21,9 @@ make && conda activate rev
 
 should prepare the computer for our pipeline (allowing, for instance, the execution of the cells in the notebook [Example.ipynb](../notebooks/Example.ipynb)). Nevertheless, the world isn't perfect; so, we provide more details in the next paragraphs.  
 
-### Installation
-You first need to download our code:  
-```sh
-git clone git@github.com:visual-ds/rev.git
-```
+For instance, if you confront some inconveniences while using `caffe`, please check [locate_caffe](../locate_caffe.py); it contains the description of usual adversities that contemplate `caffe` -- and how we are addressing them. 
 
-We are using [OSF](osf.io); the data and the models, which need to be unziped, are available in this [link](https://osf.io/wubdr/).
-
-For the posterity, we also let the previous folder with the models: it is available in [Google Drive](https://drive.google.com/drive/folders/1lXpoi4lwUW3ZZCojq0bHnJTubSmStKhJ).
-
-#### Dependencies
-* You can use any package manager to install the basic dependencies, we suggest creating an environment in conda:
-
-```sh
-    conda env create -f env.yml
-```
-> Note: If when calling the `classify` method of the `MarkClassifier` class
->1. You get the following error:
->```sh
-> TypeError _open() got an unexpected keyword argument 'as_grey'
->```
-> replace line 296 in the `[your_library_path]/caffe/io.py` file:
->````Python
->img = skimage.img_as_float(skimage.io.imread(filename, as_grey=not color)).astype(np.float32)
->````
-> by:
-> ````Python
->img = skimage.img_as_float(skimage.io.imread(filename, as_gray=not color)).astype(np.float32)
->    ````
->2. You get the following error:
->```sh
->TypeError: 'float' object cannot be interpreted as an integer
->```
-> replace line 95 of the `[your_library_path]/caffe/classifier.py` file :
->````Python
->predictions = predictions.reshape((len(predictions) / 10, 10, -1))
->````
->by:
->````Python
->predictions = predictions.reshape((len(predictions) // 10, 10, -1))
->````
-
-* Darknet
-
-    For text mask detection we use a modified version of Darknet, available in our fork ([visual-ds/darknet](https://github.com/visual-ds/darknet))
-    - First, you have to clone the repository and make command:
-
-        ```sh
-            git clone git@github.com:visual-ds/darknet.git
-            cd darknet
-            make
-        ```
-
-    - Then, set the path to the darknet executable in the `config.json` file:
-
-        ```js
-            "darknet_lib_path": "[replace_with_your_darknet_folder_path]./darknet"
-        ```
-
-
+On the other hand, do notice that the models and the data are kept in [OSF](./https://osf.io/wubdr/), which is an awesome project by the way. However, you are free to use the files available on [Google Drive](https://drive.google.com/drive/folders/1lXpoi4lwUW3ZZCojq0bHnJTubSmStKhJ), yet they aren't actively maintained (OSF is up-to-date!). 
 
 ## Using our API
 
