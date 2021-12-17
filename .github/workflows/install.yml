@@ -1,4 +1,4 @@
-name: REV CI and CD on GitHub Actions  
+name: REV: CI and CD on GitHub Actions  
 
 on: 
   schedule:  
@@ -33,6 +33,6 @@ jobs:
         make data 
     - name: Check models 
       run: |
-        python scripts/rate_craft.py academic
-
-       
+        cd tests 
+        python test_default.py 
+        python test_craft.py 
