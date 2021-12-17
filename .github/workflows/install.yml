@@ -1,4 +1,4 @@
-name: REV: CI and CD on GitHub Actions  
+name: CI and CD on GitHub Actions  
 
 on: 
   schedule:  
