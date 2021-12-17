@@ -3,7 +3,10 @@ name: REV CI and CD on GitHub Actions
 on: 
   schedule:  
     - cron: '29 9 * * 1,3' # Every Monday and Wednesday, at 9h29 
-                            # GitHub is scared of ghosts! 
+                           # GitHub is scared of ghosts! 
+  push: 
+    branches: 
+      - main 
 
 jobs:
   build-linux:
