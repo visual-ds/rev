@@ -1,6 +1,8 @@
-name: REV CI/CD on GitHub Actions  
+name: REV CI and CD on GitHub Actions  
 
-on: [push]
+on: [schedule] 
+    - crono: '29 9 * * 1,3' # Every Monday and Wednesday, at 9h29 
+                            # GitHub is scared of ghosts! 
 
 jobs:
   build-linux:
