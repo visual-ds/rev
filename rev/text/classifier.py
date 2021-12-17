@@ -131,7 +131,7 @@ class TextClassifier:
 
         # extract boxes from chart
         fh, fw, _ = chart.image.shape
-        text_boxes = copy.deepcopy(chart.text_boxes)
+        text_boxes = chart.text_boxes 
         for b in text_boxes:
             b.wrap_rect(fh, fw, padx=pad, pady=pad)
 
